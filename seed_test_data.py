@@ -4,20 +4,25 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 # CRITICAL: Import registry bootstrap FIRST to register all models with SQLAlchemy
-import app.db.base  # This ensures all models are registered before we use them
+print("==> Importing app.db.base...")
+from app.db.base import Base
+print("==> app.db.base imported successfully")
 
-# Now import the model classes we need
+# FORCE mapper configuration NOW (before any object instantiation)
+# This ensures all relationships are resolved
+print("==> Configuring mappers...")
+from sqlalchemy.orm import configure_mappers
+configure_mappers()
+print("==> Mappers configured successfully")
+
+# Now import the model classes we need (they're already registered via app.db.base)
 from app.models.clinic import Clinic
 from app.models.clinic_timing import ClinicTiming
 from app.models.doctor import Doctor
 from app.models.service import Service
 from app.models.patient import Patient
 from app.models.appointment import Appointment
-
-# FORCE mapper configuration NOW (before any object instantiation)
-# This ensures all relationships are resolved
-from sqlalchemy.orm import configure_mappers
-configure_mappers()
+print("==> All models imported successfully")
 
 def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
     """
