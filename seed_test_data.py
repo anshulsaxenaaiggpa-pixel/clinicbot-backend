@@ -3,6 +3,14 @@ import uuid
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
+# CRITICAL: Import all models FIRST so SQLAlchemy registers them
+from app.models.clinic import Clinic
+from app.models.clinic_timing import ClinicTiming
+from app.models.doctor import Doctor
+from app.models.service import Service
+from app.models.patient import Patient
+from app.models.appointment import Appointment
+
 def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
     """
     Create a test clinic with sample doctors, services, patients, and appointments
@@ -11,12 +19,6 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
         db: Database session
         whatsapp_number: The Twilio sandbox WhatsApp number
     """
-    from app.models.clinic import Clinic
-    from app.models.doctor import Doctor
-    from app.models.service import Service
-    from app.models.patient import Patient
-    from app.models.appointment import Appointment
-    
     # Create clinic
     clinic_id = uuid.uuid4()
     clinic = Clinic(

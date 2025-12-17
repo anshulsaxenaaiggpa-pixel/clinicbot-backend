@@ -31,4 +31,12 @@ def get_db():
 
 def create_tables():
     """Create all tables in database"""
+    # Import all models BEFORE creating tables so SQLAlchemy knows about them
+    import app.models.clinic  # noqa
+    import app.models.clinic_timing  # noqa
+    import app.models.doctor  # noqa
+    import app.models.service  # noqa
+    import app.models.patient  # noqa
+    import app.models.appointment  # noqa
+    
     Base.metadata.create_all(bind=engine)
