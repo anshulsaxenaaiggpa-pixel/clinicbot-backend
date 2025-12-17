@@ -14,6 +14,11 @@ from app.models.service import Service
 from app.models.patient import Patient
 from app.models.appointment import Appointment
 
+# FORCE mapper configuration NOW (before any object instantiation)
+# This ensures all relationships are resolved
+from sqlalchemy.orm import configure_mappers
+configure_mappers()
+
 def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
     """
     Create a test clinic with sample doctors, services, patients, and appointments
