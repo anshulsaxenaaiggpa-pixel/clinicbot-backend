@@ -30,8 +30,8 @@ class ClinicTiming(Base):
     lunch_start = Column(Time, nullable=True)
     lunch_end = Column(Time, nullable=True)
     
-    # Relationship using forward reference
-    clinic: "Clinic" = relationship("Clinic", back_populates="clinic_timing")
+    # Relationship
+    clinic = relationship("Clinic", back_populates="clinic_timing")
 
 
 class ClosedDate(Base):
@@ -42,5 +42,5 @@ class ClosedDate(Base):
     closed_date = Column(Date, primary_key=True)
     reason = Column(String(100), nullable=True)
     
-    # Relationship using forward reference
-    clinic: "Clinic" = relationship("Clinic", back_populates="closed_dates")
+    # Relationship
+    clinic = relationship("Clinic", back_populates="closed_dates")

@@ -45,9 +45,9 @@ class Clinic(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
     
-    # Relationships - using direct class references via forward references
-    doctors: list["Doctor"] = relationship("Doctor", back_populates="clinic")
-    services: list["Service"] = relationship("Service", back_populates="clinic")
-    appointments: list["Appointment"] = relationship("Appointment", back_populates="clinic")
-    clinic_timing: list["ClinicTiming"] = relationship("ClinicTiming", back_populates="clinic")
-    closed_dates: list["ClosedDate"] = relationship("ClosedDate", back_populates="clinic")
+    # Relationships - using string references for SQLAlchemy resolution
+    doctors = relationship("Doctor", back_populates="clinic")
+    services = relationship("Service", back_populates="clinic")
+    appointments = relationship("Appointment", back_populates="clinic")
+    clinic_timing = relationship("ClinicTiming", back_populates="clinic")
+    closed_dates = relationship("ClosedDate", back_populates="clinic")
