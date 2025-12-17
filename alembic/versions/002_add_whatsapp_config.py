@@ -72,6 +72,8 @@ def upgrade() -> None:
     sa.Column('duration_minutes', sa.Integer(), nullable=False),
     sa.Column('required_slots', sa.Integer(), nullable=False),
     sa.Column('default_fee', sa.Float(), nullable=True),
+    sa.Column('before_buffer_mins', sa.Integer(), nullable=True),
+    sa.Column('after_buffer_mins', sa.Integer(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
