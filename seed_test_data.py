@@ -70,6 +70,7 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
     db.flush()
     
     # Create doctors
+    now = datetime.utcnow()
     doctors = [
         Doctor(
             id=uuid.uuid4(),
@@ -77,7 +78,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             name="Dr. Sharma",
             specialization="Physiotherapist",
             default_fee=1200,
-            is_active=True
+            is_active=True,
+            created_at=now,
+            updated_at=now
         ),
         Doctor(
             id=uuid.uuid4(),
@@ -85,7 +88,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             name="Dr. Mehta",
             specialization="General Physician",
             default_fee=500,
-            is_active=True
+            is_active=True,
+            created_at=now,
+            updated_at=now
         )
     ]
     
@@ -104,7 +109,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             duration_minutes=30,
             required_slots=1,
             default_fee=500,
-            is_active=True
+            is_active=True,
+            created_at=now,
+            updated_at=now
         ),
         Service(
             id=uuid.uuid4(),
@@ -114,7 +121,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             duration_minutes=60,
             required_slots=2,
             default_fee=1200,
-            is_active=True
+            is_active=True,
+            created_at=now,
+            updated_at=now
         ),
         Service(
             id=uuid.uuid4(),
@@ -124,7 +133,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             duration_minutes=45,
             required_slots=2,
             default_fee=800,
-            is_active=True
+            is_active=True,
+            created_at=now,
+            updated_at=now
         )
     ]
     
@@ -143,7 +154,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             email="john@example.com",
             total_visits=3,
             cancelled_count=0,
-            no_show_count=0
+            no_show_count=0,
+            created_at=now,
+            updated_at=now
         ),
         Patient(
             id=uuid.uuid4(),
@@ -152,7 +165,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             phone="+919876543211",
             total_visits=1,
             cancelled_count=1,
-            no_show_count=0
+            no_show_count=0,
+            created_at=now,
+            updated_at=now
         )
     ]
     
@@ -162,8 +177,6 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
     db.flush()
     
     # Create sample appointments (past, present, future)
-    now = datetime.utcnow()
-    
     appointments = [
         # Past completed appointment
         Appointment(
@@ -176,7 +189,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             start_utc_ts=now - timedelta(days=7, hours=5, minutes=30),  # 10:30 AM IST
             end_utc_ts=now - timedelta(days=7, hours=5),  # 11:00 AM IST
             status="completed",
-            fee=500
+            fee=500,
+            created_at=now,
+            updated_at=now
         ),
         # Future confirmed appointment
         Appointment(
@@ -189,7 +204,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             start_utc_ts=now + timedelta(days=2, hours=-5, minutes=-30),  # 2:30 PM IST
             end_utc_ts=now + timedelta(days=2, hours=-4, minutes=-30),  # 3:30 PM IST
             status="confirmed",
-            fee=1200
+            fee=1200,
+            created_at=now,
+            updated_at=now
         ),
         # Cancelled appointment
         Appointment(
@@ -202,7 +219,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             start_utc_ts=now + timedelta(days=5, hours=-6),  # 11:00 AM IST
             end_utc_ts=now + timedelta(days=5, hours=-5, minutes=-30),  # 11:30 AM IST
             status="cancelled",
-            fee=500
+            fee=500,
+            created_at=now,
+            updated_at=now
         )
     ]
     
