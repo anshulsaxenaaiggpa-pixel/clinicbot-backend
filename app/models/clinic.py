@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 class Clinic(Base):
     """Clinic entity representing a medical practice"""
     __tablename__ = "clinics"
+    __allow_unmapped__ = True  # Temporary: Allow legacy annotations for SQLAlchemy 2.0
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
