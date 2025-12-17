@@ -1,10 +1,15 @@
 """Clinic timing configuration model"""
+from typing import TYPE_CHECKING
 from sqlalchemy import Column, String, Time, Boolean, ForeignKey, Date
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
 
 from app.db.base_class import Base
+
+# Import for type checking only
+if TYPE_CHECKING:
+    from app.models.clinic import Clinic
 
 
 class ClinicTiming(Base):
@@ -25,8 +30,8 @@ class ClinicTiming(Base):
     lunch_start = Column(Time, nullable=True)
     lunch_end = Column(Time, nullable=True)
     
-    # Relationship
-    clinic = relationship("Clinic", back_populates="clinic_timing")
+    # Relationship using forward reference
+    clinic: "Clinic" = relationship("Clinic", back_populates="clinic_timing")
 
 
 class ClosedDate(Base):
@@ -37,5 +42,5 @@ class ClosedDate(Base):
     closed_date = Column(Date, primary_key=True)
     reason = Column(String(100), nullable=True)
     
-    # Relationship
-    clinic = relationship("Clinic", back_populates="closed_dates")
+    # Relationship using forward reference
+    clinic: "Clinic" = relationship("Clinic", back_populates="closed_dates")

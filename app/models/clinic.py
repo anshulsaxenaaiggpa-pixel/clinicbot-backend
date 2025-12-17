@@ -1,4 +1,5 @@
 """Clinic database model"""
+from typing import TYPE_CHECKING
 from sqlalchemy import Column, String, DateTime, Boolean, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -6,6 +7,13 @@ from datetime import datetime
 import uuid
 
 from app.db.base_class import Base
+
+# Import for type checking only - avoids circular imports
+if TYPE_CHECKING:
+    from app.models.doctor import Doctor
+    from app.models.service import Service
+    from app.models.appointment import Appointment
+    from app.models.clinic_timing import ClinicTiming, ClosedDate
 
 
 class Clinic(Base):
@@ -37,9 +45,9 @@ class Clinic(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
     
-    # Relationships
-    doctors = relationship("Doctor", back_populates="clinic")
-    services = relationship("Service", back_populates="clinic")
-    appointments = relationship("Appointment", back_populates="clinic")
-    clinic_timing = relationship("ClinicTiming", back_populates="clinic")
-    closed_dates = relationship("ClosedDate", back_populates="clinic")
+    # Relationships - using direct class references via forward references
+    doctors: list["Doctor"] = relationship("Doctor", back_populates="clinic")
+    services: list["Service"] = relationship("Service", back_populates="clinic")
+    appointments: list["Appointment"] = relationship("Appointment", back_populates="clinic")
+    clinic_timing: list["ClinicTiming"] = relationship("ClinicTiming", back_populates="clinic")
+    closed_dates: list["ClosedDate"] = relationship("ClosedDate", back_populates="clinic")
