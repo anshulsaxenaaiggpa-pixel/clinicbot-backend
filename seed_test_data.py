@@ -224,7 +224,13 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
     }
 
 if __name__ == "__main__":
-    from app.db.database import SessionLocal
+    from app.db.database import SessionLocal, create_tables
+    
+    # CRITICAL: Create all tables before seeding
+    print("==> Creating database tables...")
+    create_tables()
+    print("==> Tables created successfully")
+    
     db = SessionLocal()
     try:
         # Use Twilio sandbox number by default
