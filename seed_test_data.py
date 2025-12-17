@@ -241,12 +241,10 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
     }
 
 if __name__ == "__main__":
-    from app.db.database import SessionLocal, create_tables
+    from app.db.database import SessionLocal
     
-    # CRITICAL: Create all tables before seeding
-    print("==> Creating database tables...")
-    create_tables()
-    print("==> Tables created successfully")
+    # NOTE: Tables are created by Alembic migrations, not by create_tables()
+    # Run: alembic upgrade head
     
     db = SessionLocal()
     try:
