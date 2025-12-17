@@ -32,6 +32,23 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
         db: Database session
         whatsapp_number: The Twilio sandbox WhatsApp number
     """
+    # IDEMPOTENCY: Check if clinic already exists
+    existing_clinic = db.query(Clinic).filter_by(whatsapp_number=whatsapp_number).first()
+    if existing_clinic:
+        print(f"\n{'='*60}")
+        print(f"✅ Clinic already exists, skipping seed")
+        print(f"{'='*60}")
+        print(f"   Clinic ID: {existing_clinic.id}")
+        print(f"   Clinic Name: {existing_clinic.name}")
+        print(f"   WhatsApp Number: {existing_clinic.whatsapp_number}")
+        print(f"   API Key: {existing_clinic.api_key}")
+        print(f"{'='*60}\n")
+        return {
+            "clinic_id": str(existing_clinic.id),
+            "api_key": existing_clinic.api_key,
+            "status": "already_exists"
+        }
+    
     # Create clinic
     clinic_id = uuid.uuid4()
     clinic = Clinic(
