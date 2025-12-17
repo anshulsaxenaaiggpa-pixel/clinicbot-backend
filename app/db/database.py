@@ -1,8 +1,10 @@
 """Database connection and session management"""
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
+
+# Import the single Base registry and ensure models are registered
+from app.db.base import Base
 
 # Create database engine
 engine = create_engine(
@@ -16,9 +18,6 @@ engine = create_engine(
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class for models
-Base = declarative_base()
-
 
 def get_db():
     """Dependency to get database session"""
@@ -31,12 +30,6 @@ def get_db():
 
 def create_tables():
     """Create all tables in database"""
-    # Import all models BEFORE creating tables so SQLAlchemy knows about them
-    import app.models.clinic  # noqa
-    import app.models.clinic_timing  # noqa
-    import app.models.doctor  # noqa
-    import app.models.service  # noqa
-    import app.models.patient  # noqa
-    import app.models.appointment  # noqa
-    
+    # All models are already imported via app.db.base
+    # No need to import them again here
     Base.metadata.create_all(bind=engine)

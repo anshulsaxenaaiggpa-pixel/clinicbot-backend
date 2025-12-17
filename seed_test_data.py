@@ -3,7 +3,10 @@ import uuid
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
-# CRITICAL: Import all models FIRST so SQLAlchemy registers them
+# CRITICAL: Import registry bootstrap FIRST to register all models with SQLAlchemy
+import app.db.base  # This ensures all models are registered before we use them
+
+# Now import the model classes we need
 from app.models.clinic import Clinic
 from app.models.clinic_timing import ClinicTiming
 from app.models.doctor import Doctor

@@ -1,4 +1,7 @@
 """FastAPI main application entry point"""
+# CRITICAL: Import registry bootstrap FIRST to ensure all models are registered
+import app.db.base  # noqa - Must be first to register SQLAlchemy models
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
