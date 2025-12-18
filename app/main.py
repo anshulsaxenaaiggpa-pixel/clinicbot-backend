@@ -6,6 +6,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 
+# Debug: Confirm main.py is loading
+print("=" * 60)
+print("🚀 MAIN.PY LOADING - ClinicBot.ai API")
+print("=" * 60)
+
 app = FastAPI(
     title="ClinicBot.ai API",
     description="WhatsApp-first AI appointment booking system for clinics",
@@ -82,3 +87,16 @@ app.include_router(patients.router, prefix="/api/v1/patients", tags=["patients"]
 app.include_router(appointments.router, prefix="/api/v1/appointments", tags=["appointments"])
 app.include_router(slots.router, prefix="/api/v1/slots", tags=["slots"])
 app.include_router(summary.router, prefix="/api/v1/summary", tags=["summary"])
+
+# Debug: List all registered routes
+print("\n" + "=" * 60)
+print("✅ All routers registered successfully")
+print("=" * 60)
+print("📋 Available routes:")
+for route in app.routes:
+    if hasattr(route, 'path'):
+        methods = getattr(route, 'methods', ['*'])
+        print(f"  {', '.join(methods):8} {route.path}")
+print("=" * 60)
+print(f"🌐 Total routes: {len(app.routes)}")
+print("=" * 60 + "\n")
