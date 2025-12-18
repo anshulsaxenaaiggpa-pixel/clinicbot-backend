@@ -25,19 +25,18 @@ class Patient(Base):
     # Patient details
     name = Column(String(100), nullable=False)
     phone = Column(String(15), nullable=False)
-    whatsapp_name = Column(String(100), nullable=True)  # From WhatsApp profile
+    email = Column(String(100), nullable=True)
+    date_of_birth = Column(DateTime, nullable=True)
+    gender = Column(String(10), nullable=True)
     
     # Tracking
-    first_visit_date = Column(DateTime(timezone=True), nullable=True)
-    last_visit_date = Column(DateTime(timezone=True), nullable=True)
     total_visits = Column(Integer, default=0)
-    total_cancellations = Column(Integer, default=0)
-    total_no_shows = Column(Integer, default=0)
+    cancelled_count = Column(Integer, default=0)
+    no_show_count = Column(Integer, default=0)
     
     # Metadata
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_active = Column(Boolean, default=True)
     
     # Relationships
     clinic = relationship("Clinic", backref="patients")
