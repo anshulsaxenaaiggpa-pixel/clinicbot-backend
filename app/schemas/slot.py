@@ -1,6 +1,6 @@
 """Slot availability API schemas"""
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 from datetime import date
 from uuid import UUID
 
