@@ -50,5 +50,4 @@ class Appointment(Base):
     __table_args__ = (
         Index("idx_doctor_date", "doctor_id", "date"),
         Index("idx_clinic_date", "clinic_id", "date"),
-        Index("idx_patient_phone", "patient_phone"),
     )
