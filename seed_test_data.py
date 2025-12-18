@@ -151,10 +151,9 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             clinic_id=clinic_id,
             name="John Doe",
             phone="+919876543210",
-            email="john@example.com",
             total_visits=3,
-            cancelled_count=0,
-            no_show_count=0,
+            total_cancellations=0,
+            total_no_shows=0,
             created_at=now,
             updated_at=now
         ),
@@ -164,8 +163,8 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
             name="Jane Smith",
             phone="+919876543211",
             total_visits=1,
-            cancelled_count=1,
-            no_show_count=0,
+            total_cancellations=1,
+            total_no_shows=0,
             created_at=now,
             updated_at=now
         )
