@@ -18,28 +18,23 @@ class Appointment(Base):
     service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=False)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=True)  # Legacy appointments may not have patient_id
     
-    # Patient information (kept for backwards compatibility)
-    patient_name = Column(String(100), nullable=False)
-    patient_phone = Column(String(15), nullable=False)
-    patient_notes = Column(String(500), nullable=True)
+    # Patient information (stored in appointment for historical record)
+    # Note: Appointments may also link to Patient table via patient_id
     
-    # Scheduling (stored as UTC timestamps)
+    # Scheduling
     date = Column(Date, nullable=False)
-    start_utc_ts = Column(BigInteger, nullable=False)  # Unix timestamp
-    end_utc_ts = Column(BigInteger, nullable=False)    # Unix timestamp
+    start_utc_ts = Column(DateTime, nullable=False)  # UTC datetime
+    end_utc_ts = Column(DateTime, nullable=False)    # UTC datetime
     
     # Status tracking
     status = Column(String(20), default="confirmed")  # confirmed, cancelled, completed, no_show
-    created_via = Column(String(20), default="whatsapp")  # whatsapp, dashboard, api
     
-    # Payment (optional)
-    payment_status = Column(String(20), default="pending")  # pending, paid, refunded
-    amount_paid = Column(Integer, nullable=True)
+    # Payment
+    fee = Column(Integer, nullable=True)
     
-    # Reminders sent
-    reminder_24h_sent = Column(DateTime(timezone=True), nullable=True)
-    reminder_2h_sent = Column(DateTime(timezone=True), nullable=True)
-    followup_sent = Column(DateTime(timezone=True), nullable=True)
+    # Notes
+    notes = Column(String, nullable=True)
+    cancellation_reason = Column(String, nullable=True)
     
     # Metadata
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
