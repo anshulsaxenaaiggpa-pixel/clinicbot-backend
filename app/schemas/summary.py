@@ -1,6 +1,6 @@
 """Summary and analytics schemas"""
 from pydantic import BaseModel, Field
-from typing import Dict, List
+from typing import Any, Dict, List
 from datetime import date
 from uuid import UUID
 
@@ -37,4 +37,4 @@ class DashboardStats(BaseModel):
     month_appointments: int
     month_revenue: int
     current_occupancy: float
-    top_services: List[Dict[str, any]] = Field(..., description="Top 5 services by bookings")
+    top_services: List[Dict[str, Any]] = Field(..., description="Top 5 services by bookings")
