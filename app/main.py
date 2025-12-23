@@ -42,6 +42,7 @@ async def root():
 async def health_check():
     """Detailed health check with actual connectivity tests"""
     from app.db.database import SessionLocal
+    from sqlalchemy import text
     import redis
     
     health_status = {
@@ -54,7 +55,7 @@ async def health_check():
     # Check database
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         health_status["database"] = "connected"
     except Exception as e:
