@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
     # Database
-    DATABASE_URL: str
-    REDIS_URL: str
+    DATABASE_URL: Optional[str] = "sqlite:///./clinicbot.db"
+    REDIS_URL: Optional[str] = None
     
     # API Keys
     OPENAI_API_KEY: Optional[str] = None
