@@ -13,8 +13,21 @@ from app.db.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
-# Redis for session storage
-redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+# Redis for session storage - lazy connection to avoid startup crashes
+_redis_client = None
+
+def get_redis_client():
+    """Get Redis client with lazy initialization"""
+    global _redis_client
+    if _redis_client is None:
+        try:
+            _redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+            _redis_client.ping()  # Test connection
+        except Exception as e:
+            logger.warning(f"Redis connection failed: {e}. Session persistence disabled.")
+            # Return a dummy client that does nothing
+            return None
+    return _redis_client
 
 
 class WhatsAppMessageHandler:
@@ -116,13 +129,19 @@ class WhatsAppMessageHandler:
     
     def _get_session(self, user_phone: str) -> Dict[str, Any]:
         """Get user session from Redis"""
-        session_key = f"session:{user_phone}"
-        session_data = redis_client.get(session_key)
+        redis_client = get_redis_client()
         
-        if session_data:
-            return json.loads(session_data)
+        if redis_client:
+            try:
+                session_key = f"session:{user_phone}"
+                session_data = redis_client.get(session_key)
+                
+                if session_data:
+                    return json.loads(session_data)
+            except Exception as e:
+                logger.warning(f"Redis get failed: {e}. Using in-memory session.")
         
-        # Create new session
+        # Create new session (works without Redis too)
         return {
             "user_phone": user_phone,
             "clinic_id": None,  # Set after clinic selection
@@ -133,20 +152,29 @@ class WhatsAppMessageHandler:
     
     def _update_session(self, user_phone: str, updates: Dict[str, Any]):
         """Update user session in Redis"""
-        session_key = f"session:{user_phone}"
+        redis_client = get_redis_client()
         
-        # Get existing session
-        current_session = self._get_session(user_phone)
+        if not redis_client:
+            logger.warning("Redis unavailable. Session not persisted.")
+            return
         
-        # Merge updates
-        current_session.update(updates)
-        
-        # Save to Redis (30 min TTL)
-        redis_client.setex(
-            session_key,
-            1800,  # 30 minutes
-            json.dumps(current_session)
-        )
+        try:
+            session_key = f"session:{user_phone}"
+            
+            # Get existing session
+            current_session = self._get_session(user_phone)
+            
+            # Merge updates
+            current_session.update(updates)
+            
+            # Save to Redis (30 min TTL)
+            redis_client.setex(
+                session_key,
+                1800,  # 30 minutes
+                json.dumps(current_session)
+            )
+        except Exception as e:
+            logger.warning(f"Redis setex failed: {e}. Session not persisted.")
     
     def _get_clinic_id_for_number(self, to_number: str) -> Optional[str]:
         """
