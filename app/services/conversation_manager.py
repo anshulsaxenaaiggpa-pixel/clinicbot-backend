@@ -127,40 +127,32 @@ How can I assist you today?""",
             if conversation_state == "start":
                 # Get doctors list
                 logger.info(f"Fetching doctors for clinic {clinic_id}")
-                try:
-                    doctors = await self._fetch_doctors(clinic_id)
-                    
-                    if not doctors:
-                        return {
-                            "message": "No doctors available at the moment. Please try again later.",
-                            "session_update": {}
-                        }
-                    
-                    logger.info(f"Found {len(doctors)} doctors")
-                    
-                    doctor_list = "\n".join([f"{i+1}. Dr. {doc['name']} ({doc['specialization']})" 
-                                            for i, doc in enumerate(doctors)])
-                    
+                doctors = await self._fetch_doctors(clinic_id)
+                
+                if not doctors:
                     return {
-                       "message": f"""Which doctor would you like to see?
+                        "message": "No doctors available at the moment. Please try again later.",
+                        "session_update": {}
+                    }
+                
+                logger.info(f"Found {len(doctors)} doctors")
+                
+                doctor_list = "\n".join([f"{i+1}. Dr. {doc['name']} ({doc['specialization']})" 
+                                        for i, doc in enumerate(doctors)])
+                
+                return {
+                   "message": f"""Which doctor would you like to see?
 
 {doctor_list}
 
 Reply with the number or doctor name.""",
-                        "session_update": {
-                            "context": {
-                                "booking_state": "awaiting_doctor",
-                                "doctors": doctors
-                            }
+                    "session_update": {
+                        "context": {
+                            "booking_state": "awaiting_doctor",
+                            "doctors": doctors
                         }
                     }
-                    
-                except Exception as fetch_error:
-                    logger.error(f"Failed to fetch/format doctors: {type(fetch_error).__name__}: {fetch_error}")
-                    return {
-                        "message": "Unable to load doctor information. Please try again in a moment.",
-                        "session_update": {}
-                    }
+                }
             
             elif conversation_state == "awaiting_doctor":
                 # Doctor selected, ask for service
@@ -172,122 +164,122 @@ Reply with the number or doctor name.""",
                         "message": "Invalid selection. Please reply with the number or doctor name from the list above.",
                         "session_update": {}
                     }
-            
-            doctor_id = selected_doctor["id"]
-            
-            services = await self._fetch_services(clinic_id)
-            service_list = "\n".join([f"{i+1}. {svc['name']} (₹{svc['default_fee']})" 
-                                     for i, svc in enumerate(services)])
-            
-            return {
-                "message": f"""Select service:
+                
+                doctor_id = selected_doctor["id"]
+                
+                services = await self._fetch_services(clinic_id)
+                service_list = "\n".join([f"{i+1}. {svc['name']} (₹{svc['default_fee']})" 
+                                         for i, svc in enumerate(services)])
+                
+                return {
+                    "message": f"""Select service:
 
 {service_list}
 
 Reply with the number.""",
-                "session_update": {
-                    "context": {
-                        "booking_state": "awaiting_service",
-                        "selected_doctor_id": doctor_id,
-                        "selected_doctor_name": selected_doctor["name"],
-                        "services": services
+                    "session_update": {
+                        "context": {
+                            "booking_state": "awaiting_service",
+                            "selected_doctor_id": doctor_id,
+                            "selected_doctor_name": selected_doctor["name"],
+                            "services": services
+                        }
                     }
                 }
-            }
-        
-        elif conversation_state == "awaiting_service":
-            # Service selected, ask for date
-            services = session["context"].get("services", [])
-            selected_service = self._parse_user_selection(message_text, services)
             
-            if not selected_service:
+            elif conversation_state == "awaiting_service":
+                # Service selected, ask for date
+                services = session["context"].get("services", [])
+                selected_service = self._parse_user_selection(message_text, services)
+                
+                if not selected_service:
+                    return {
+                        "message": "Invalid selection. Please reply with the number or service name from the list above.",
+                        "session_update": {}
+                    }
+                
                 return {
-                    "message": "Invalid selection. Please reply with the number or service name from the list above.",
-                    "session_update": {}
-                }
-            
-            return {
-                "message": """When would you like to book?
+                    "message": """When would you like to book?
 
 Reply with:
 • Today
 • Tomorrow
 • Date (e.g., Dec 15 or 15-12-2025)""",
-                "session_update": {
-                    "context": {
-                        "booking_state": "awaiting_date",
-                        "selected_service_id": selected_service["id"],
-                        "selected_service_name": selected_service["name"],
-                        "selected_service_fee": selected_service["default_fee"]
+                    "session_update": {
+                        "context": {
+                            "booking_state": "awaiting_date",
+                            "selected_service_id": selected_service["id"],
+                            "selected_service_name": selected_service["name"],
+                            "selected_service_fee": selected_service["default_fee"]
+                        }
                     }
                 }
-            }
-        
-        elif conversation_state == "awaiting_date":
-            # Date selected, show available slots
-            target_date = self._parse_date(entities.get("date"))
-            doctor_id = session["context"]["selected_doctor_id"]
             
-            slots = await self._fetch_slots(clinic_id, doctor_id, target_date)
-            
-            if not slots:
+            elif conversation_state == "awaiting_date":
+                # Date selected, show available slots
+                target_date = self._parse_date(entities.get("date"))
+                doctor_id = session["context"]["selected_doctor_id"]
+                
+                slots = await self._fetch_slots(clinic_id, doctor_id, target_date)
+                
+                if not slots:
+                    return {
+                        "message": f"No slots available on {target_date}. Try another date?",
+                        "session_update": {}
+                    }
+                
+                slot_list = "\n".join([f"{i+1}. {slot['start_time']}" 
+                                      for i, slot in enumerate(slots[:10])])
+                
                 return {
-                    "message": f"No slots available on {target_date}. Try another date?",
-                    "session_update": {}
-                }
-            
-            slot_list = "\n".join([f"{i+1}. {slot['start_time']}" 
-                                  for i, slot in enumerate(slots[:10])])
-            
-            return {
-                "message": f"""Available slots on {target_date}:
+                    "message": f"""Available slots on {target_date}:
 
 {slot_list}
 
 Reply with the number to book.""",
-                "session_update": {
-                    "context": {
-                        "booking_state": "awaiting_slot",
-                        "available_slots": slots,
-                        "target_date": str(target_date)
+                    "session_update": {
+                        "context": {
+                            "booking_state": "awaiting_slot",
+                            "available_slots": slots,
+                            "target_date": str(target_date)
+                        }
                     }
                 }
-            }
-        
-        elif conversation_state == "awaiting_slot":
-            # Slot selected, confirm booking
-            available_slots = session["context"].get("available_slots", [])
             
-            # For slots, use index-based selection (expecting numeric input)
-            selected_slot = None
-            try:
-                slot_index = int(message_text.strip()) - 1
-                if 0 <= slot_index < len(available_slots):
-                    selected_slot = available_slots[slot_index]
-            except ValueError:
-                pass
-            
-            if not selected_slot:
-                return {
-                    "message": "Invalid selection. Please reply with the slot number from the list above.",
-                    "session_update": {}
-                }
-            
-            # Book appointment via API (now includes patient_id)
-            booking_result = await self._create_booking(
-                clinic_id=clinic_id,
-                doctor_id=session["context"]["selected_doctor_id"],
-                service_id=session["context"]["selected_service_id"],
-                patient_id=session.get("patient_id"),
-                patient_phone=session["user_phone"],
-                patient_name=session.get("patient_name", "Patient"),
-                slot=selected_slot,
-                target_date=session["context"].get("target_date")
-            )
-            
-            if booking_result.get("success"):
-                return {
-                    "message": f"""✅ Appointment Confirmed!
+            elif conversation_state == "awaiting_slot":
+                # Slot selected, confirm booking
+                available_slots = session["context"].get("available_slots", [])
+                
+                # For slots, use index-based selection (expecting numeric input)
+                selected_slot = None
+                try:
+                    slot_index = int(message_text.strip()) - 1
+                    if 0 <= slot_index < len(available_slots):
+                        selected_slot = available_slots[slot_index]
+                except ValueError:
+                    pass
+                
+                if not selected_slot:
+                    return {
+                        "message": "Invalid selection. Please reply with the slot number from the list above.",
+                        "session_update": {}
+                    }
+                
+                # Book appointment via API
+                booking_result = await self._create_booking(
+                    clinic_id=clinic_id,
+                    doctor_id=session["context"]["selected_doctor_id"],
+                    service_id=session["context"]["selected_service_id"],
+                    patient_id=session.get("patient_id"),
+                    patient_phone=session["user_phone"],
+                    patient_name=session.get("patient_name", "Patient"),
+                    slot=selected_slot,
+                    target_date=session["context"].get("target_date")
+                )
+                
+                if booking_result.get("success"):
+                    return {
+                        "message": f"""✅ Appointment Confirmed!
 
 📅 Date: {booking_result['date']}
 🕐 Time: {booking_result['time']}
@@ -297,19 +289,22 @@ Reply with the number to book.""",
 You'll receive reminders 24h and 2h before.
 
 Need anything else?""",
-                    "session_update": {
-                        "context": {
-                            "booking_state": "completed",
-                            "last_appointment_id": booking_result.get("appointment_id", "")
+                        "session_update": {
+                            "context": {
+                                "booking_state": "completed",
+                                "last_appointment_id": booking_result.get("appointment_id", "")
+                            }
                         }
                     }
-                }
-            else:
-                return {
-                    "message": f"❌ Booking failed: {booking_result.get('error')}",
-                    "session_update": {"context": {"booking_state": "start"}}
-                }
-        
+                else:
+                    return {
+                        "message": f"❌ Booking failed: {booking_result.get('error')}",
+                        "session_update": {"context": {"booking_state": "start"}}
+                    }
+            
+            # If we reach here, unknown state
+            return self._handle_unknown()
+            
         except Exception as e:
             import traceback
             logger.error(f"❌ BOOKING HANDLER ERROR: {type(e).__name__}: {str(e)}")
@@ -318,8 +313,6 @@ Need anything else?""",
                 "message": "Sorry, the booking system is temporarily unavailable. Please type 'help' to see other options.",
                 "session_update": {"context": {"booking_state": "start"}}
             }
-        
-        return self._handle_unknown()
     
     async def _handle_availability(self, entities: Dict[str, Any], session: Dict[str, Any]) -> Dict[str, Any]:
         """Handle availability check"""
