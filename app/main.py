@@ -77,6 +77,42 @@ async def health_check():
     return health_status
 
 
+@app.post("/init-db")
+async def initialize_database():
+    """Initialize database with test clinic data (one-time setup)"""
+    import importlib.util
+    import sys
+    from pathlib import Path
+    
+    try:
+        # Dynamically import seed_test_data module
+        seed_file = Path(__file__).parent.parent / "seed_test_data.py"
+        spec = importlib.util.spec_from_file_location("seed_test_data", seed_file)
+        seed_module = importlib.util.module_from_spec(spec)
+        sys.modules["seed_test_data"] = seed_module
+        spec.loader.exec_module(seed_module)
+        
+        # Run seed function
+        from app.db.database import SessionLocal
+        db = SessionLocal()
+        try:
+            result = seed_module.seed_test_clinic(db, whatsapp_number="+14155238886")
+            return {
+                "status": "success",
+                "message": "Database initialized successfully",
+                "data": result
+            }
+        finally:
+            db.close()
+            
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
 # Include API routers
 from app.api.v1 import clinics, doctors, services, appointments, slots, summary, auth, webhooks, patients
 from app.api import onboarding
