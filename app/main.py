@@ -79,13 +79,32 @@ async def health_check():
 
 @app.post("/init-db")
 async def initialize_database():
-    """Initialize database with test clinic data (one-time setup)"""
+    """Initialize database with migrations and test clinic data (one-time setup)"""
+    import logging
     import importlib.util
     import sys
     from pathlib import Path
     
+    logger = logging.getLogger(__name__)
+    
+    results = {
+        "tables": "not_created",
+        "seed": "not_run"
+    }
+    
     try:
-        # Dynamically import seed_test_data module
+        # Step 1: Create all tables using SQLAlchemy
+        logger.info("Creating database tables...")
+        from app.db.database import engine
+        from app.db.base import Base
+        
+        # This will create all tables defined in the models
+        Base.metadata.create_all(bind=engine)
+        results["tables"] = "created"
+        logger.info("Tables created successfully")
+        
+        # Step 2: Seed test data
+        logger.info("Seeding test clinic data...")
         seed_file = Path(__file__).parent.parent / "seed_test_data.py"
         spec = importlib.util.spec_from_file_location("seed_test_data", seed_file)
         seed_module = importlib.util.module_from_spec(spec)
@@ -96,20 +115,26 @@ async def initialize_database():
         from app.db.database import SessionLocal
         db = SessionLocal()
         try:
-            result = seed_module.seed_test_clinic(db, whatsapp_number="+14155238886")
+            seed_result = seed_module.seed_test_clinic(db, whatsapp_number="+14155238886")
+            results["seed"] = seed_result
+            logger.info("Seeding completed successfully")
+            
             return {
                 "status": "success",
                 "message": "Database initialized successfully",
-                "data": result
+                "details": results
             }
         finally:
             db.close()
             
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")
+        import traceback
         return {
             "status": "error",
-            "message": str(e)
+            "message": str(e),
+            "traceback": traceback.format_exc(),
+            "details": results
         }
 
 
