@@ -42,6 +42,7 @@ async def root():
 async def health_check():
     """Detailed health check with actual connectivity tests"""
     from app.db.database import SessionLocal
+    from sqlalchemy import text
     import redis
     
     health_status = {
@@ -54,7 +55,7 @@ async def health_check():
     # Check database
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         health_status["database"] = "connected"
     except Exception as e:
@@ -63,9 +64,12 @@ async def health_check():
     
     # Check Redis
     try:
-        redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
-        redis_client.ping()
-        health_status["redis"] = "connected"
+        if settings.REDIS_URL and settings.REDIS_URL.strip():
+            redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+            redis_client.ping()
+            health_status["redis"] = "connected"
+        else:
+            health_status["redis"] = "not configured"
     except Exception as e:
         health_status["redis"] = f"error: {str(e)}"
         health_status["status"] = "degraded"

@@ -17,17 +17,31 @@ logger = logging.getLogger(__name__)
 _redis_client = None
 
 def get_redis_client():
-    """Get Redis client with lazy initialization"""
+    """Get Redis client with lazy initialization and URL validation"""
     global _redis_client
+    
+    # Only try once - if we've already determined Redis is unavailable, return None
     if _redis_client is None:
         try:
+            # Validate Redis URL exists and has proper scheme
+            if not settings.REDIS_URL or not settings.REDIS_URL.startswith(("redis://", "rediss://", "unix://")):
+                logger.info("[Redis Disabled] Falling back to in-memory sessions: Invalid or missing Redis URL")
+                _redis_client = False  # Mark as attempted but failed
+                return None
+            
+            # Try to connect
             _redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
             _redis_client.ping()  # Test connection
+            logger.info(f"[Redis Connected] Successfully connected to Redis at {settings.REDIS_URL}")
+            return _redis_client
+            
         except Exception as e:
-            logger.warning(f"Redis connection failed: {e}. Session persistence disabled.")
-            # Return a dummy client that does nothing
+            logger.warning(f"[Redis Disabled] Falling back to in-memory sessions: {e}")
+            _redis_client = False  # Mark as attempted but failed
             return None
-    return _redis_client
+    
+    # Return the cached client (or None if it failed previously)
+    return _redis_client if _redis_client is not False else None
 
 
 class WhatsAppMessageHandler:
