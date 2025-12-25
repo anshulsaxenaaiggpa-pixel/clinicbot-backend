@@ -49,16 +49,22 @@ class WhatsAppSender:
             True if successful
         """
         try:
+            logger.info(f"📤 Attempting to send WhatsApp message via {provider} to {to}")
+            
             if provider == "twilio" and self.twilio_client:
                 return await self._send_twilio(to, message, buttons)
+            elif provider == "twilio" and not self.twilio_client:
+                logger.error("❌ Twilio provider requested but Twilio client not initialized")
+                logger.error("   → Check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set")
+                return False
             elif provider == "meta":
                 return await self._send_meta(to, message, buttons)
             else:
-                logger.error(f"Unknown provider: {provider}")
+                logger.error(f"❌ Unknown provider: {provider}")
                 return False
         
         except Exception as e:
-            logger.error(f"Error sending WhatsApp message: {str(e)}")
+            logger.error(f"❌ Critical error in send_message: {type(e).__name__}: {str(e)[:200]}")
             return False
     
     async def _send_twilio(self, to: str, message: str, buttons: Optional[List[str]]) -> bool:
@@ -84,7 +90,23 @@ class WhatsAppSender:
             return True
             
         except Exception as e:
-            logger.error(f"Twilio send error: {str(e)}")
+            # Enhanced error logging for diagnosis
+            error_type = type(e).__name__
+            error_msg = str(e)
+            logger.error(f"❌ Twilio send FAILED to {to}")
+            logger.error(f"   Error Type: {error_type}")
+            logger.error(f"   Error Message: {error_msg[:200]}")
+            
+            # Check specific error types
+            if "401" in error_msg or "authenticate" in error_msg.lower():
+                logger.error("   → Likely AUTH issue: Check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN")
+            elif "connection" in error_msg.lower() or "attempts failed" in error_msg.lower():
+                logger.error("   → Likely NETWORK issue: Railway may be blocking outbound Twilio API calls")
+            elif "21211" in error_msg:
+                logger.error("   → Invalid phone number format")
+            elif "21608" in error_msg:
+                logger.error("   → WhatsApp number not in sandbox - rejoin sandbox first")
+                
             return False
     
     async def _send_meta(self, to: str, message: str, buttons: Optional[List[str]]) -> bool:
