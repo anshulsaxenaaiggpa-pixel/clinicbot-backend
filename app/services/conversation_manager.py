@@ -138,31 +138,29 @@ How can I assist you today?""",
                     
                     logger.info(f"Found {len(doctors)} doctors")
                     
-                            
-            doctor_list = "\n".join([f"{i+1}. Dr. {doc['name']} ({doc['specialization']})" 
-                                    for i, doc in enumerate(doctors)])
-            
-            return {
-               "message": f"""Which doctor would you like to see?
+                    doctor_list = "\n".join([f"{i+1}. Dr. {doc['name']} ({doc['specialization']})" 
+                                            for i, doc in enumerate(doctors)])
+                    
+                    return {
+                       "message": f"""Which doctor would you like to see?
 
 {doctor_list}
 
 Reply with the number or doctor name.""",
-                "session_update": {
-                    "context": {
-                        "booking_state": "awaiting_doctor",
-                        "doctors": doctors
+                        "session_update": {
+                            "context": {
+                                "booking_state": "awaiting_doctor",
+                                "doctors": doctors
+                            }
+                        }
                     }
-                }
-            }
-        
-        elif conversation_state == "awaiting_doctor":
-            # Doctor selected, ask for service
-            doctors = session["context"].get("doctors", [])
-            selected_doctor = self._parse_user_selection(message_text, doctors)
-            
-            if not selected_doctor:
-                return {
+                    
+                except Exception as fetch_error:
+                    logger.error(f"Failed to fetch/format doctors: {type(fetch_error).__name__}: {fetch_error}")
+                    return {
+                        "message": "Unable to load doctor information. Please try again in a moment.",
+                        "session_update": {}
+                    }
                     "message": "Invalid selection. Please reply with the number or doctor name from the list above.",
                     "session_update": {}
                 }
