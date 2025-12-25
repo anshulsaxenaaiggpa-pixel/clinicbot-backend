@@ -161,6 +161,14 @@ Reply with the number or doctor name.""",
                         "message": "Unable to load doctor information. Please try again in a moment.",
                         "session_update": {}
                     }
+        
+        elif conversation_state == "awaiting_doctor":
+            # Doctor selected, ask for service
+            doctors = session["context"].get("doctors", [])
+            selected_doctor = self._parse_user_selection(message_text, doctors)
+            
+            if not selected_doctor:
+                return {
                     "message": "Invalid selection. Please reply with the number or doctor name from the list above.",
                     "session_update": {}
                 }
