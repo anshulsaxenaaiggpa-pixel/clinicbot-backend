@@ -416,20 +416,20 @@ Just tell me what you need!""",
     async def _fetch_doctors(self, clinic_id: str) -> List[Dict]:
         """Fetch doctors from API"""
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.api_base}/doctors?clinic_id={clinic_id}")
+            response = await client.get(f"{self.api_base}/doctors/?clinic_id={clinic_id}")
             return response.json()
     
     async def _fetch_services(self, clinic_id: str) -> List[Dict]:
         """Fetch services from API"""
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.api_base}/services?clinic_id={clinic_id}")
+            response = await client.get(f"{self.api_base}/services/?clinic_id={clinic_id}")
             return response.json()
     
     async def _fetch_slots(self, clinic_id: str, doctor_id: str, date: date) -> List[Dict]:
         """Fetch available slots"""
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.api_base}/slots",
+                f"{self.api_base}/slots/",
                 params={"clinic_id": clinic_id, "doctor_id": doctor_id, "date": str(date)}
             )
             result = response.json()
@@ -457,7 +457,7 @@ Just tell me what you need!""",
             
             try:
                 response = await client.post(
-                    f"{self.api_base}/appointments",
+                    f"{self.api_base}/appointments/",
                     json=payload
                 )
                 if response.status_code == 201:
