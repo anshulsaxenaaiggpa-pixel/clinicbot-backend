@@ -21,8 +21,21 @@ class ConversationManager:
     """
     
     def __init__(self):
-        # Use localhost for internal API calls (Railway runs on port 8080)
-        self.api_base = "http://localhost:8080/api/v1"
+        import os
+        
+        # Production-safe API base URL configuration
+        # Priority: API_BASE_URL > PORT > localhost:8000 fallback
+        api_base_url = os.getenv("API_BASE_URL")
+        
+        if api_base_url:
+            # Use explicit override (Railway production URL)
+            self.api_base = api_base_url
+        else:
+            # Use PORT env var (Railway injects this)
+            port = os.getenv("PORT", "8000")
+            self.api_base = f"http://localhost:{port}/api/v1"
+        
+        logger.info(f"ConversationManager initialized with API base: {self.api_base}")
     
     async def process(
         self,
