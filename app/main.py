@@ -79,7 +79,7 @@ async def health_check():
 
 @app.post("/init-db")
 async def initialize_database():
-    """Initialize database with migrations and test clinic data (one-time setup)"""
+    """Initialize database by dropping and recreating all tables with seed data"""
     import logging
     import importlib.util
     import sys
@@ -88,22 +88,28 @@ async def initialize_database():
     logger = logging.getLogger(__name__)
     
     results = {
-        "tables": "not_created",
+        "tables_dropped": "not_dropped",
+        "tables_created": "not_created",
         "seed": "not_run"
     }
     
     try:
-        # Step 1: Create all tables using SQLAlchemy
-        logger.info("Creating database tables...")
         from app.db.database import engine
         from app.db.base import Base
         
-        # This will create all tables defined in the models
+        # Step 1: Drop all existing tables (ensures schema changes are applied)
+        logger.info("Dropping all existing tables...")
+        Base.metadata.drop_all(bind=engine)
+        results["tables_dropped"] = "success"
+        logger.info("All tables dropped successfully")
+        
+        # Step 2: Create all tables with updated schema
+        logger.info("Creating database tables with updated schema...")
         Base.metadata.create_all(bind=engine)
-        results["tables"] = "created"
+        results["tables_created"] = "success"
         logger.info("Tables created successfully")
         
-        # Step 2: Seed test data
+        # Step 3: Seed test data
         logger.info("Seeding test clinic data...")
         seed_file = Path(__file__).parent.parent / "seed_test_data.py"
         spec = importlib.util.spec_from_file_location("seed_test_data", seed_file)
@@ -121,7 +127,7 @@ async def initialize_database():
             
             return {
                 "status": "success",
-                "message": "Database initialized successfully",
+                "message": "Database reinitialized successfully (all tables dropped and recreated)",
                 "details": results
             }
         finally:
