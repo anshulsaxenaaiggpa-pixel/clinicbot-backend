@@ -2,13 +2,13 @@
 import logging
 import json
 from typing import Dict, Any, List
-import openai
+from openai import OpenAI
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI
-openai.api_key = settings.OPENAI_API_KEY
+# Initialize OpenAI client (v1.0+ syntax)
+client = OpenAI(api_key=settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else None
 
 
 class IntentClassifier:
@@ -71,6 +71,11 @@ Respond ONLY with valid JSON:
                 "entities": dict
             }
         """
+        # If OpenAI is not configured, use fallback immediately
+        if not client:
+            logger.warning("OpenAI not configured, using fallback classification")
+            return self._fallback_classification(message)
+            
         try:
             # Build context-aware prompt
             user_message = message
@@ -79,8 +84,8 @@ Respond ONLY with valid JSON:
                 if state:
                     user_message = f"Context: User is in '{state}' state.\nMessage: {message}"
             
-            # Call GPT-4
-            response = openai.ChatCompletion.create(
+            # Call GPT-4 using new v1.0+ syntax
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
