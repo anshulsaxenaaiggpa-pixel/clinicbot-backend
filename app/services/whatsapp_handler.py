@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 # Redis for session storage - lazy connection to avoid startup crashes
 _redis_client = None
 
+# In-memory session fallback when Redis unavailable
+_memory_sessions = {}
+
 def get_redis_client():
     """Get Redis client with lazy initialization and URL validation"""
     global _redis_client
@@ -169,7 +172,7 @@ class WhatsAppMessageHandler:
                 logger.error(f"Failed to send error message: {send_error}")
     
     def _get_session(self, user_phone: str) -> Dict[str, Any]:
-        """Get user session from Redis"""
+        """Get user session from Redis or in-memory fallback"""
         redis_client = get_redis_client()
         
         if redis_client:
@@ -178,44 +181,64 @@ class WhatsAppMessageHandler:
                 session_data = redis_client.get(session_key)
                 
                 if session_data:
+                    logger.info(f"Retrieved session from Redis for {user_phone}")
                     return json.loads(session_data)
             except Exception as e:
                 logger.warning(f"Redis get failed: {e}. Using in-memory session.")
         
-        # Create new session (works without Redis too)
-        return {
+        # Use in-memory fallback
+        global _memory_sessions
+        if user_phone in _memory_sessions:
+            logger.info(f"Retrieved session from memory for {user_phone}")
+            return _memory_sessions[user_phone]
+        
+        # Create new session
+        logger.info(f"Creating new session for {user_phone}")
+        new_session = {
             "user_phone": user_phone,
             "clinic_id": None,  # Set after clinic selection
             "context": {},
             "conversation_state": "idle",
             "created_at": None
         }
+        _memory_sessions[user_phone] = new_session
+        return new_session
     
     def _update_session(self, user_phone: str, updates: Dict[str, Any]):
-        """Update user session in Redis"""
+        """Update user session in Redis or in-memory fallback"""
         redis_client = get_redis_client()
         
-        if not redis_client:
-            logger.warning("Redis unavailable. Session not persisted.")
-            return
+        # Get existing session
+        current_session = self._get_session(user_phone)
         
-        try:
-            session_key = f"session:{user_phone}"
-            
-            # Get existing session
-            current_session = self._get_session(user_phone)
-            
-            # Merge updates
-            current_session.update(updates)
-            
-            # Save to Redis (30 min TTL)
-            redis_client.setex(
-                session_key,
-                1800,  # 30 minutes
-                json.dumps(current_session)
-            )
-        except Exception as e:
-            logger.warning(f"Redis setex failed: {e}. Session not persisted.")
+        # Merge updates (deep merge for context)
+        if "context" in updates:
+            if "context" not in current_session:
+                current_session["context"] = {}
+            current_session["context"].update(updates["context"])
+            del updates["context"]
+        current_session.update(updates)
+        
+        logger.info(f"Updating session for {user_phone}: context={current_session.get('context', {})}")
+        
+        # Save to Redis if available
+        if redis_client:
+            try:
+                session_key = f"session:{user_phone}"
+                redis_client.setex(
+                    session_key,
+                    1800,  # 30 minutes
+                    json.dumps(current_session)
+                )
+                logger.info(f"Session saved to Redis for {user_phone}")
+                return
+            except Exception as e:
+                logger.warning(f"Redis setex failed: {e}. Falling back to memory.")
+        
+        # Save to in-memory fallback
+        global _memory_sessions
+        _memory_sessions[user_phone] = current_session
+        logger.info(f"Session saved to memory for {user_phone}")
     
     def _get_clinic_id_for_number(self, to_number: str) -> Optional[str]:
         """
