@@ -25,6 +25,7 @@ class Patient(Base):
     # Patient details
     name = Column(String(100), nullable=False)
     phone = Column(String(15), nullable=False)
+    whatsapp_name = Column(String(100), nullable=True)  # Name from WhatsApp profile
     email = Column(String(100), nullable=True)
     date_of_birth = Column(DateTime, nullable=True)
     gender = Column(String(10), nullable=True)
