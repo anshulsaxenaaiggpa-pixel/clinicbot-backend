@@ -69,6 +69,8 @@ class WhatsAppSender:
     
     async def _send_twilio(self, to: str, message: str, buttons: Optional[List[str]]) -> bool:
         """Send via Twilio"""
+        import asyncio
+        
         try:
             # Format phone number
             if not to.startswith("+"):
@@ -79,12 +81,16 @@ class WhatsAppSender:
             if buttons:
                 message += "\n\n" + "\n".join([f"{i+1}. {btn}" for i, btn in enumerate(buttons)])
             
-            # Send message
-            self.twilio_client.messages.create(
-                from_=self.twilio_number,
-                to=f"whatsapp:{to}",
-                body=message
-            )
+            # Twilio SDK is synchronous - run in thread pool to avoid blocking async loop
+            def _send_sync():
+                return self.twilio_client.messages.create(
+                    from_=self.twilio_number,
+                    to=f"whatsapp:{to}",
+                    body=message
+                )
+            
+            # Run blocking Twilio call in thread pool
+            await asyncio.to_thread(_send_sync)
             
             logger.info(f"Sent Twilio message to {to}")
             return True
