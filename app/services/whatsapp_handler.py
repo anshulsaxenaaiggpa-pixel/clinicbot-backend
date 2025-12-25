@@ -153,13 +153,20 @@ class WhatsAppMessageHandler:
             )
             
         except Exception as e:
-            logger.error(f"Error handling message from {user_phone}: {str(e)}")
+            import traceback
+            error_trace = traceback.format_exc()
+            logger.error(f"Error handling message from {user_phone}: {type(e).__name__}: {str(e)}")
+            logger.error(f"Full traceback:\n{error_trace}")
+            
             # Send fallback message
-            await self.whatsapp_sender.send_message(
-                to=user_phone,
-                message="Sorry, I encountered an error. Please try again or type 'help' for assistance.",
-                provider=message_data.get("provider")
-            )
+            try:
+                await self.whatsapp_sender.send_message(
+                    to=user_phone,
+                    message="Sorry, I encountered an error. Please try again or type 'help' for assistance.",
+                    provider=message_data.get("provider")
+                )
+            except Exception as send_error:
+                logger.error(f"Failed to send error message: {send_error}")
     
     def _get_session(self, user_phone: str) -> Dict[str, Any]:
         """Get user session from Redis"""
