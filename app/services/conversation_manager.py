@@ -21,7 +21,8 @@ class ConversationManager:
     """
     
     def __init__(self):
-        self.api_base = "http://localhost:8000/api/v1"
+        # Use localhost for internal API calls (Railway runs on port 8080)
+        self.api_base = "http://localhost:8080/api/v1"
     
     async def process(
         self,
