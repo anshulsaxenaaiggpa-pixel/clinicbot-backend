@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     
     # API Keys
     OPENAI_API_KEY: Optional[str] = None
+    OPENAI_MODEL: str = "gpt-3.5-turbo"  # Default OpenAI model for intent classification
     GEMINI_API_KEY: Optional[str] = None
     
     # WhatsApp (Twilio)

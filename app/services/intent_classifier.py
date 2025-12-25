@@ -1,4 +1,4 @@
-"""Intent classification using GPT-4/Gemini"""
+"""Intent classification using OpenAI (GPT-3.5-turbo, GPT-4, or custom models)"""
 import logging
 import json
 from typing import Dict, Any, List
@@ -13,7 +13,8 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else
 
 class IntentClassifier:
     """
-    Classify user intent and extract entities using GPT-4
+    Classify user intent and extract entities using OpenAI (GPT-3.5-turbo or GPT-4)
+    Model is configurable via OPENAI_MODEL environment variable.
     
     Intents:
     - book_appointment
@@ -58,7 +59,7 @@ Respond ONLY with valid JSON:
     
     async def classify(self, message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        Classify intent using GPT-4
+        Classify intent using OpenAI (configurable model, default: gpt-3.5-turbo)
         
         Args:
             message: User message text
@@ -84,9 +85,9 @@ Respond ONLY with valid JSON:
                 if state:
                     user_message = f"Context: User is in '{state}' state.\nMessage: {message}"
             
-            # Call GPT-4 using new v1.0+ syntax
+            # Call OpenAI using configured model (default: gpt-3.5-turbo)
             response = client.chat.completions.create(
-                model="gpt-4",
+                model=settings.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": user_message}
@@ -105,7 +106,7 @@ Respond ONLY with valid JSON:
             return intent_data
             
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse GPT-4 response: {e}")
+            logger.error(f"Failed to parse OpenAI response: {e}")
             return self._fallback_classification(message)
         
         except Exception as e:
@@ -114,7 +115,7 @@ Respond ONLY with valid JSON:
     
     def _fallback_classification(self, message: str) -> Dict[str, Any]:
         """
-        Simple keyword-based fallback if GPT-4 fails
+        Simple keyword-based fallback if OpenAI API fails
         """
         message_lower = message.lower()
         

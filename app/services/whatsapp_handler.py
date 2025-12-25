@@ -24,19 +24,39 @@ def get_redis_client():
     if _redis_client is None:
         try:
             # Validate Redis URL exists and has proper scheme
-            if not settings.REDIS_URL or not settings.REDIS_URL.startswith(("redis://", "rediss://", "unix://")):
-                logger.info("[Redis Disabled] Falling back to in-memory sessions: Invalid or missing Redis URL")
+            if not settings.REDIS_URL:
+                logger.info("[Redis Disabled] No REDIS_URL configured. Falling back to in-memory sessions.")
                 _redis_client = False  # Mark as attempted but failed
                 return None
             
+            if not settings.REDIS_URL.startswith(("redis://", "rediss://", "unix://")):
+                logger.warning(f"[Redis Disabled] Invalid Redis URL scheme: {settings.REDIS_URL[:20]}... Falling back to in-memory sessions.")
+                _redis_client = False
+                return None
+            
             # Try to connect
-            _redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+            logger.info(f"[Redis] Attempting to connect to Redis at {settings.REDIS_URL[:20]}...")
+            _redis_client = redis.from_url(
+                settings.REDIS_URL, 
+                decode_responses=True,
+                socket_connect_timeout=5,  # 5 second timeout
+                socket_timeout=5,
+                retry_on_timeout=True
+            )
             _redis_client.ping()  # Test connection
-            logger.info(f"[Redis Connected] Successfully connected to Redis at {settings.REDIS_URL}")
+            logger.info(f"✅ [Redis Connected] Successfully connected to Redis")
             return _redis_client
             
+        except redis.ConnectionError as e:
+            logger.warning(f"[Redis Disabled] Connection failed: {str(e)[:100]}. Falling back to in-memory sessions.")
+            _redis_client = False
+            return None
+        except redis.TimeoutError as e:
+            logger.warning(f"[Redis Disabled] Connection timeout: {str(e)[:100]}. Falling back to in-memory sessions.")
+            _redis_client = False
+            return None
         except Exception as e:
-            logger.warning(f"[Redis Disabled] Falling back to in-memory sessions: {e}")
+            logger.warning(f"[Redis Disabled] Unexpected error: {type(e).__name__}: {str(e)[:100]}. Falling back to in-memory sessions.")
             _redis_client = False  # Mark as attempted but failed
             return None
     
