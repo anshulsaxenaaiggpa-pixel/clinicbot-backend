@@ -91,7 +91,7 @@ async def test_twilio_connectivity():
     return result
 
 
-@router.post("/send-test-whatsapp")
+@router.get("/send-test-whatsapp")
 async def send_test_whatsapp(to_number: str = Query(..., description="WhatsApp number to send to, e.g., +919205648624")):
     """
     Send a test WhatsApp message using the SAME code path as the bot.
