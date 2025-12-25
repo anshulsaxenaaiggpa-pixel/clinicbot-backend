@@ -72,7 +72,11 @@ class WhatsAppSender:
         import asyncio
         
         try:
-            # Format phone number
+            # Sanitize phone number - URL encoding can convert + to space
+            to = to.strip()  # Remove leading/trailing spaces
+            to = to.replace(" ", "")  # Remove any spaces
+            
+            # Ensure + prefix
             if not to.startswith("+"):
                 to = f"+{to}"
             
