@@ -1,5 +1,6 @@
 """Intent classification using GPT-4/Gemini"""
 import logging
+import json
 from typing import Dict, Any, List
 import openai
 from app.config import settings
@@ -93,7 +94,6 @@ Respond ONLY with valid JSON:
             result = response.choices[0].message.content
             
             # Parse JSON
-            import json
             intent_data = json.loads(result)
             
             logger.info(f"Classified intent: {intent_data}")
