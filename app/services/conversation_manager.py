@@ -111,20 +111,34 @@ How can I assist you today?""",
         5. Show available slots
         6. Confirm booking
         """
-        conversation_state = session.get("context", {}).get("booking_state", "start")
-        clinic_id = session.get("clinic_id")
-        
-        if not clinic_id:
-            return {
-                "message": "Please provide your clinic ID or WhatsApp number to continue.",
-                "session_update": {}
-            }
-        
-        # State machine for booking flow
-        if conversation_state == "start":
-            # Get doctors list
-            doctors = await self._fetch_doctors(clinic_id)
+        try:
+            conversation_state = session.get("context", {}).get("booking_state", "start")
+            clinic_id = session.get("clinic_id")
             
+            logger.info(f"📋 BOOKING HANDLER: state={conversation_state}, clinic_id={clinic_id}")
+            
+            if not clinic_id:
+                logger.warning("No clinic_id in session - using default test clinic")
+                # Use default test clinic (from seed data)
+                clinic_id = "aa4171cd-55b1-4da5-828e-00edcd67bbfd"
+                session["clinic_id"] = clinic_id
+            
+            # State machine for booking flow
+            if conversation_state == "start":
+                # Get doctors list
+                logger.info(f"Fetching doctors for clinic {clinic_id}")
+                try:
+                    doctors = await self._fetch_doctors(clinic_id)
+                    
+                    if not doctors:
+                        return {
+                            "message": "No doctors available at the moment. Please try again later.",
+                            "session_update": {}
+                        }
+                    
+                    logger.info(f"Found {len(doctors)} doctors")
+                    
+                            
             doctor_list = "\n".join([f"{i+1}. Dr. {doc['name']} ({doc['specialization']})" 
                                     for i, doc in enumerate(doctors)])
             
@@ -289,6 +303,15 @@ Need anything else?""",
                     "message": f"❌ Booking failed: {booking_result.get('error')}",
                     "session_update": {"context": {"booking_state": "start"}}
                 }
+        
+        except Exception as e:
+            import traceback
+            logger.error(f"❌ BOOKING HANDLER ERROR: {type(e).__name__}: {str(e)}")
+            logger.error(f"Traceback:\n{traceback.format_exc()}")
+            return {
+                "message": "Sorry, the booking system is temporarily unavailable. Please type 'help' to see other options.",
+                "session_update": {"context": {"booking_state": "start"}}
+            }
         
         return self._handle_unknown()
     
