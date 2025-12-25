@@ -145,9 +145,10 @@ async def initialize_database():
 
 
 # Include API routers
-from app.api.v1 import clinics, doctors, services, appointments, slots, summary, auth, webhooks, patients
+from app.api.v1 import clinics, doctors, services, appointments, slots, summary, auth, webhooks, patients, debug
 from app.api import onboarding
 
+app.include_router(debug.router, prefix="/api/v1/debug", tags=["debug"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
 app.include_router(onboarding.router, prefix="/api/v1/onboarding", tags=["onboarding"])
