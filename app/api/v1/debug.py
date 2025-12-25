@@ -1,9 +1,11 @@
 """Debug endpoints for diagnosing deployment issues"""
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 import httpx
 import os
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/test-twilio-connectivity")
@@ -85,5 +87,69 @@ async def test_twilio_connectivity():
                 "error_type": type(e).__name__,
                 "error_message": str(e)[:200]
             }
+    
+    return result
+
+
+@router.post("/send-test-whatsapp")
+async def send_test_whatsapp(to_number: str = Query(..., description="WhatsApp number to send to, e.g., +919205648624")):
+    """
+    Send a test WhatsApp message using the SAME code path as the bot.
+    This isolates whether the issue is in message sending vs webhook logic.
+    """
+    from app.services.whatsapp_sender import WhatsAppSender
+    
+    result = {
+        "test": "WhatsApp Message Send",
+        "to_number": to_number[:8] + "..." if len(to_number) > 8 else to_number,
+        "from_number": os.getenv("TWILIO_WHATSAPP_NUMBER", "NOT SET"),
+    }
+    
+    # Validate environment
+    if not os.getenv("TWILIO_ACCOUNT_SID"):
+        result["error"] = "TWILIO_ACCOUNT_SID not set"
+        result["success"] = False
+        return result
+    
+    if not os.getenv("TWILIO_AUTH_TOKEN"):
+        result["error"] = "TWILIO_AUTH_TOKEN not set"
+        result["success"] = False
+        return result
+    
+    if not os.getenv("TWILIO_WHATSAPP_NUMBER"):
+        result["error"] = "TWILIO_WHATSAPP_NUMBER not set"
+        result["success"] = False
+        return result
+    
+    try:
+        # Use the SAME WhatsAppSender class the bot uses
+        sender = WhatsAppSender()
+        
+        logger.info(f"🧪 TEST: Sending WhatsApp message to {to_number}")
+        
+        # Send test message
+        success = await sender.send_message(
+            to=to_number,
+            message="🧪 ClinicBot Test Message\n\nIf you receive this, WhatsApp integration is working!",
+            provider="twilio"
+        )
+        
+        result["success"] = success
+        result["message"] = "✅ Message sent successfully!" if success else "❌ Message send failed - check Railway logs for details"
+        
+        # Add helpful debugging info
+        result["debugging_notes"] = {
+            "to_format": f"Sending to: whatsapp:{to_number}",
+            "from_format": f"Sending from: {os.getenv('TWILIO_WHATSAPP_NUMBER')}",
+            "sandbox_reminder": "Both sender and recipient must have joined the Twilio sandbox",
+            "join_command": "Send 'join <your-code>' to +1 415 523 8886"
+        }
+        
+    except Exception as e:
+        result["success"] = False
+        result["error_type"] = type(e).__name__
+        result["error_message"] = str(e)[:300]
+        result["message"] = f"❌ Exception: {type(e).__name__}"
+        logger.error(f"🧪 TEST FAILED: {type(e).__name__}: {str(e)}")
     
     return result
