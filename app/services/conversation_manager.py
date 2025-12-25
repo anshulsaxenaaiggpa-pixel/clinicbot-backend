@@ -59,7 +59,7 @@ class ConversationManager:
             return self._handle_greeting(session)
         
         elif intent == "book_appointment":
-            return await self._handle_booking(entities, session)
+            return await self._handle_booking(entities, session, message_text)
         
         elif intent == "check_availability":
             return await self._handle_availability(entities, session)
@@ -99,7 +99,7 @@ How can I assist you today?""",
             }
         }
     
-    async def _handle_booking(self, entities: Dict[str, Any], session: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_booking(self, entities: Dict[str, Any], session: Dict[str, Any], message_text: str) -> Dict[str, Any]:
         """
         Handle appointment booking (multi-turn flow)
         
