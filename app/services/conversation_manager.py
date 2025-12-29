@@ -87,15 +87,18 @@ class ConversationManager:
         return {
             "message": """👋 Welcome to ClinicBot!
 
-I can help you:
-• Book appointments
-• Check availability
-• Cancel or reschedule
-• Get clinic information
+Please select an option:
 
-How can I assist you today?""",
+1️⃣ Book appointment
+2️⃣ Check availability
+3️⃣ Check fees
+4️⃣ Get location
+5️⃣ Cancel appointment
+6️⃣ Reschedule appointment
+
+Reply with the number (1-6).""",
             "session_update": {
-                "context": {"last_intent": "greeting"}
+                "context": {"last_intent": "greeting", "showing_main_menu": True}
             }
         }
     
@@ -288,18 +291,38 @@ Reply with the number to book.""",
 
 You'll receive reminders 24h and 2h before.
 
-Need anything else?""",
+━━━━━━━━━━━━━━━━━━━━
+What would you like to do next?
+
+1️⃣ Book another appointment
+2️⃣ Check availability
+3️⃣ Check fees
+4️⃣ Get location
+5️⃣ Cancel appointment
+6️⃣ Reschedule appointment
+
+Reply with the number (1-6).""",
                         "session_update": {
                             "context": {
                                 "booking_state": "completed",
-                                "last_appointment_id": booking_result.get("appointment_id", "")
+                                "last_appointment_id": booking_result.get("appointment_id", ""),
+                                "showing_main_menu": True
                             }
                         }
                     }
                 else:
                     return {
-                        "message": f"❌ Booking failed: {booking_result.get('error')}",
-                        "session_update": {"context": {"booking_state": "start"}}
+                        "message": f"""❌ Booking failed: {booking_result.get('error')}
+
+Would you like to try again?
+
+1️⃣ Book appointment
+2️⃣ Check availability
+3️⃣ Check fees
+4️⃣ Get location
+
+Reply with the number (1-4).""",
+                        "session_update": {"context": {"booking_state": "start", "showing_main_menu": True}}
                     }
             
             # If we reach here, unknown state
@@ -370,24 +393,37 @@ WhatsApp: {clinic['whatsapp_number']}""",
     def _handle_help(self) -> Dict[str, Any]:
         """Handle help request"""
         return {
-            "message": """ℹ️ I can help you with:
+            "message": """ℹ️ How can I help you?
 
-• *Book appointment* - Schedule a visit
-• *Check availability* - See free slots
-• *Cancel* - Cancel existing booking
-• *Reschedule* - Change appointment time
-• *Fees* - Check consultation charges
-• *Location* - Get clinic address
+Please select an option:
 
-Just tell me what you need!""",
-            "session_update": {}
+1️⃣ Book appointment
+2️⃣ Check availability
+3️⃣ Check fees
+4️⃣ Get location
+5️⃣ Cancel appointment
+6️⃣ Reschedule appointment
+
+Reply with the number (1-6).""",
+            "session_update": {"context": {"showing_main_menu": True}}
         }
     
     def _handle_unknown(self) -> Dict[str, Any]:
         """Handle unknown intent"""
         return {
-            "message": "I didn't quite understand that. Type 'help' to see what I can do.",
-            "session_update": {}
+            "message": """I didn't quite understand that. 
+
+Please select an option:
+
+1️⃣ Book appointment
+2️⃣ Check availability
+3️⃣ Check fees
+4️⃣ Get location
+5️⃣ Cancel appointment
+6️⃣ Reschedule appointment
+
+Reply with the number (1-6).""",
+            "session_update": {"context": {"showing_main_menu": True}}
         }
     
     # User input parsing helpers

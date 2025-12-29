@@ -86,6 +86,17 @@ Respond ONLY with valid JSON:
                     "context_preserved": True
                 }
         
+        # Handle numbered menu selections when user is viewing main menu
+        if context and context.get("showing_main_menu"):
+            menu_intent = self._parse_menu_number(message)
+            if menu_intent:
+                logger.info(f"🔢 Menu selection: {message} -> {menu_intent}")
+                return {
+                    "intent": menu_intent,
+                    "confidence": 1.0,
+                    "entities": {}
+                }
+        
         # If OpenAI is not configured, use fallback immediately
         if not client:
             logger.warning("OpenAI not configured, using fallback classification")
@@ -157,3 +168,30 @@ Respond ONLY with valid JSON:
         
         else:
             return {"intent": "help", "confidence": 0.5, "entities": {}}
+    
+    def _parse_menu_number(self, message: str) -> Optional[str]:
+        """
+        Parse numbered menu selections (1-6) to intent names
+        
+        Menu mapping:
+        1 -> book_appointment
+        2 -> check_availability
+        3 -> check_fees
+        4 -> get_location
+        5 -> cancel_appointment
+        6 -> reschedule_appointment
+        
+        Returns:
+            Intent name if valid number, None otherwise
+        """
+        menu_map = {
+            "1": "book_appointment",
+            "2": "check_availability",
+            "3": "check_fees",
+            "4": "get_location",
+            "5": "cancel_appointment",
+            "6": "reschedule_appointment"
+        }
+        
+        return menu_map.get(message.strip())
+
