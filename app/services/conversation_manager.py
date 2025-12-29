@@ -264,7 +264,7 @@ Please try another date:
                         }
                     }
                 
-                slot_list = "\n".join([f"{i+1}. {slot['start_time']}" 
+                slot_list = "\n".join([f"{i+1}. {slot['start_local']}" 
                                       for i, slot in enumerate(slots[:10])])
                 
                 formatted_date = target_date.strftime("%d %b %Y")
