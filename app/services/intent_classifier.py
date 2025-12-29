@@ -1,7 +1,7 @@
 """Intent classification using OpenAI (GPT-3.5-turbo, GPT-4, or custom models)"""
 import logging
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from openai import OpenAI
 from app.config import settings
 
