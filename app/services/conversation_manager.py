@@ -569,15 +569,20 @@ Reply with the number (1-6).""",
     
     def _parse_date(self, date_str: Optional[str]) -> date:
         """
-        Parse date string to date object with natural language support
+        Parse date string to date object with DETERMINISTIC DD-MM-YYYY format
         
-        Supports:
+        Supported formats (EXPLICIT - NO GUESSING):
         - "today", "tomorrow"
-        - "Dec 15", "15 Dec", "December 15"
-        - "Next Monday", "Next week"
-        - "15/12/2025", "15-12-2025"
-        - "2025-12-15"
+        - "DD-MM-YYYY" (31-12-2025)
+        - "DD-MM-YY" (31-12-25 → 2025)
+        - "DD.MM.YYYY" (31.12.2025)
+        - "DD.MM.YY" (31.12.25)
+        - "DD Month" (31 Dec, 15 December)
+        - "Month DD" (Dec 31, December 15)
+        
+        Note: ALWAYS uses DAY-MONTH-YEAR order (Indian/European format)
         """
+        import re
         import dateparser
         
         if not date_str:
@@ -585,29 +590,88 @@ Reply with the number (1-6).""",
         
         text = date_str.strip().lower()
         
-        # Handle common shortcuts first
+        # 1. Handle exact shortcuts
         if text == "today":
+            logger.info(f"📅 '{date_str}' → today ({date.today()})")
             return date.today()
-        elif text == "tomorrow":
-            return date.today() + timedelta(days=1)
         
-        # Use dateparser for natural language
+        if text == "tomorrow":
+            result = date.today() + timedelta(days=1)
+            logger.info(f"📅 '{date_str}' → tomorrow ({result})")
+            return result
+        
+        # 2. Handle explicit DD-MM-YYYY patterns (prevent US-format ambiguity)
+        
+        # DD-MM-YYYY (31-12-2025)
+        match = re.match(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$', date_str.strip())
+        if match:
+            day, month, year = match.groups()
+            try:
+                result = date(int(year), int(month), int(day))
+                logger.info(f"📅 '{date_str}' → DD-MM-YYYY format ({result})")
+                return result
+            except ValueError as e:
+                logger.warning(f"Invalid date components: {day}/{month}/{year} - {e}")
+        
+        # DD-MM-YY (31-12-25 → 2025, using pivot: 00-69 = 2000s, 70-99 = 1900s)
+        match = re.match(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$', date_str.strip())
+        if match:
+            day, month, yy = match.groups()
+            year = int(yy)
+            # Pivot: 00-69 → 2000-2069, 70-99 → 1970-1999
+            full_year = 2000 + year if year <= 69 else 1900 + year
+            try:
+                result = date(full_year, int(month), int(day))
+                logger.info(f"📅 '{date_str}' → DD-MM-YY format ({result})")
+                return result
+            except ValueError as e:
+                logger.warning(f"Invalid date components: {day}/{month}/{full_year} - {e}")
+        
+        # DD.MM.YYYY (31.12.2025)
+        match = re.match(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$', date_str.strip())
+        if match:
+            day, month, year = match.groups()
+            try:
+                result = date(int(year), int(month), int(day))
+                logger.info(f"📅 '{date_str}' → DD.MM.YYYY format ({result})")
+                return result
+            except ValueError as e:
+                logger.warning(f"Invalid date components: {day}.{month}.{year} - {e}")
+        
+        # DD.MM.YY (31.12.25)
+        match = re.match(r'^(\d{1,2})\.(\d{1,2})\.(\d{2})$', date_str.strip())
+        if match:
+            day, month, yy = match.groups()
+            year = int(yy)
+            full_year = 2000 + year if year <= 69 else 1900 + year
+            try:
+                result = date(full_year, int(month), int(day))
+                logger.info(f"📅 '{date_str}' → DD.MM.YY format ({result})")
+                return result
+            except ValueError as e:
+                logger.warning(f"Invalid date components: {day}.{month}.{full_year} - {e}")
+        
+        # 3. Use dateparser for natural language ONLY (with DAY_FIRST enforced)
         try:
             parsed = dateparser.parse(
                 date_str,
                 settings={
-                    'PREFER_DATES_FROM': 'future',  # Prefer future dates
+                    'PREFER_DATES_FROM': 'future',
+                    'PREFER_DAY_OF_MONTH': 'first',
+                    'DATE_ORDER': 'DMY',  # ← CRITICAL: Force DAY-MONTH-YEAR
                     'TIMEZONE': 'Asia/Kolkata',
                     'RETURN_AS_TIMEZONE_AWARE': False
                 }
             )
             if parsed:
-                logger.info(f"Parsed date '{date_str}' as {parsed.date()}")
-                return parsed.date()
+                result = parsed.date()
+                logger.info(f"📅 '{date_str}' → Natural language ({result})")
+                return result
         except Exception as e:
-            logger.warning(f"Failed to parse date '{date_str}': {e}")
+            logger.warning(f"Dateparser failed for '{date_str}': {e}")
         
-        # Fallback to today
-        logger.warning(f"Could not parse date '{date_str}', defaulting to today")
+        # 4. Fallback to today
+        logger.warning(f"⚠️ Could not parse '{date_str}', defaulting to today")
         return date.today()
+
 

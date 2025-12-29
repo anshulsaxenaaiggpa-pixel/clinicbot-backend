@@ -69,6 +69,55 @@ def seed_test_clinic(db: Session, whatsapp_number: str = "+14155238886"):
     db.add(clinic)
     db.flush()
     
+    # Create clinic timing (CRITICAL for slot generation!)
+    from datetime import time as dt_time
+    
+    # Weekday timing (Monday-Friday): 9 AM - 6 PM with lunch break
+    weekday_timing = ClinicTiming(
+        id=uuid.uuid4(),
+        clinic_id=clinic_id,
+        day_of_week="monday",  # Represents all weekdays
+        start_time=dt_time(9, 0),  # 9:00 AM
+        end_time=dt_time(18, 0),  # 6:00 PM
+        is_closed=False,
+        lunch_enabled=True,
+        lunch_start=dt_time(13, 0),  # 1:00 PM
+        lunch_end=dt_time(14, 0),  # 2:00 PM
+        created_at=now,
+        updated_at=now
+    )
+    db.add(weekday_timing)
+    
+    # Saturday timing: 9 AM - 2 PM (shorter hours)
+    saturday_timing = ClinicTiming(
+        id=uuid.uuid4(),
+        clinic_id=clinic_id,
+        day_of_week="saturday",
+        start_time=dt_time(9, 0),  # 9:00 AM
+        end_time=dt_time(14, 0),  # 2:00 PM
+        is_closed=False,
+        lunch_enabled=False,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(saturday_timing)
+    
+    # Sunday: Closed
+    sunday_timing = ClinicTiming(
+        id=uuid.uuid4(),
+        clinic_id=clinic_id,
+        day_of_week="sunday",
+        start_time=None,
+        end_time=None,
+        is_closed=True,
+        lunch_enabled=False,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(sunday_timing)
+    
+    db.flush()
+    
     # Create doctors
     now = datetime.utcnow()
     doctors = [
