@@ -72,10 +72,24 @@ Respond ONLY with valid JSON:
                 "entities": dict
             }
         """
+        # CRITICAL: If user is in the middle of a booking flow, preserve that context
+        # and don't re-classify the intent (their response is part of the booking flow)
+        if context and "booking_state" in context:
+            booking_state = context.get("booking_state")
+            # Valid mid-flow states where user is responding to prompts
+            if booking_state in ["awaiting_doctor", "awaiting_service", "awaiting_date", "awaiting_slot"]:
+                logger.info(f"🔄 User in booking flow (state={booking_state}), preserving 'book_appointment' intent")
+                return {
+                    "intent": "book_appointment",
+                    "confidence": 1.0,
+                    "entities": {},
+                    "context_preserved": True
+                }
+        
         # If OpenAI is not configured, use fallback immediately
         if not client:
             logger.warning("OpenAI not configured, using fallback classification")
-            return self._fallback_classification(message)
+            return self._fallback_classification(message, context)
             
         try:
             # Build context-aware prompt
@@ -107,13 +121,13 @@ Respond ONLY with valid JSON:
             
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse OpenAI response: {e}")
-            return self._fallback_classification(message)
+            return self._fallback_classification(message, context)
         
         except Exception as e:
             logger.error(f"Error in intent classification: {str(e)}")
-            return self._fallback_classification(message)
+            return self._fallback_classification(message, context)
     
-    def _fallback_classification(self, message: str) -> Dict[str, Any]:
+    def _fallback_classification(self, message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Simple keyword-based fallback if OpenAI API fails
         """
