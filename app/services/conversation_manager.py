@@ -160,6 +160,23 @@ Reply with the number or doctor name.""",
             elif conversation_state == "awaiting_doctor":
                 # Doctor selected, ask for service
                 doctors = session["context"].get("doctors", [])
+                
+                # Check if user is trying to greet/get help instead of selecting
+                message_lower = message_text.lower().strip()
+                if message_lower in ["hi", "hello", "hey", "help", "?"]:
+                    doctor_list = "\n".join([f"{i+1}. Dr. {doc['name']} ({doc['specialization']})" 
+                                            for i, doc in enumerate(doctors)])
+                    return {
+                        "message": f"""I'm here to help you book an appointment! 
+
+Which doctor would you like to see?
+
+{doctor_list}
+
+Please reply with the number (1, 2, etc.).""",
+                        "session_update": {}  # Keep current state
+                    }
+                
                 selected_doctor = self._parse_user_selection(message_text, doctors)
                 
                 if not selected_doctor:
@@ -220,22 +237,40 @@ Reply with:
             
             elif conversation_state == "awaiting_date":
                 # Date selected, show available slots
-                target_date = self._parse_date(entities.get("date"))
+                # CRITICAL FIX: Parse from message_text, not from entities (which is empty in booking flow)
+                target_date = self._parse_date(message_text)
                 doctor_id = session["context"]["selected_doctor_id"]
                 
+                logger.info(f"📅 User said: '{message_text}' → Parsed as: {target_date}")
+                
+                # Fetch available slots for this date
                 slots = await self._fetch_slots(clinic_id, doctor_id, target_date)
                 
                 if not slots:
+                    # Format date nicely for user feedback
+                    formatted_date = target_date.strftime("%d %b %Y")
                     return {
-                        "message": f"No slots available on {target_date}. Try another date?",
-                        "session_update": {}
+                        "message": f"""No slots available on {formatted_date}.
+
+Please try another date:
+• Today
+• Tomorrow  
+• Specific date (e.g., 30 Dec or 30-12-2025)""",
+                        "session_update": {
+                            "context": {
+                                "booking_state": "awaiting_date",  # Stay in same state
+                                "last_tried_date": str(target_date)
+                            }
+                        }
                     }
                 
                 slot_list = "\n".join([f"{i+1}. {slot['start_time']}" 
                                       for i, slot in enumerate(slots[:10])])
                 
+                formatted_date = target_date.strftime("%d %b %Y")
+                
                 return {
-                    "message": f"""Available slots on {target_date}:
+                    "message": f"""Available slots on {formatted_date}:
 
 {slot_list}
 
