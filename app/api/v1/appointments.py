@@ -58,7 +58,8 @@ def book_appointment(appointment_data: AppointmentCreate, db: Session = Depends(
         raise InvalidServiceError()
     
     # Calculate end timestamp
-    end_utc_ts = appointment_data.start_utc_ts + (service.duration_minutes * 60)
+    start_datetime = dt.utcfromtimestamp(appointment_data.start_utc_ts)
+    end_datetime = dt.utcfromtimestamp(appointment_data.start_utc_ts + (service.duration_minutes * 60))
     
     # Check for conflicts (CRITICAL: prevent double-booking)
     conflict = db.query(Appointment).filter(
@@ -68,8 +69,8 @@ def book_appointment(appointment_data: AppointmentCreate, db: Session = Depends(
             Appointment.status.in_(['confirmed', 'pending']),
             # Overlap check: new appointment overlaps with existing if:
             # new_start < existing_end AND new_end > existing_start
-            Appointment.end_utc_ts > appointment_data.start_utc_ts,
-            Appointment.start_utc_ts < end_utc_ts
+            Appointment.end_utc_ts > start_datetime,
+            Appointment.start_utc_ts < end_datetime
         )
     ).first()
     
@@ -88,8 +89,8 @@ def book_appointment(appointment_data: AppointmentCreate, db: Session = Depends(
         patient_phone=appointment_data.patient_phone,
         patient_notes=appointment_data.patient_notes,
         date=appointment_data.date,
-        start_utc_ts=appointment_data.start_utc_ts,
-        end_utc_ts=end_utc_ts,
+        start_utc_ts=start_datetime,
+        end_utc_ts=end_datetime,
         status="confirmed",
         created_via="api"  # Can be "whatsapp", "dashboard", "api"
     )
@@ -99,10 +100,9 @@ def book_appointment(appointment_data: AppointmentCreate, db: Session = Depends(
     db.refresh(appointment)
     
     # Schedule reminder tasks
-    appointment_datetime = dt.utcfromtimestamp(appointment.start_utc_ts)
     schedule_appointment_reminders.delay(
         str(appointment.id),
-        appointment_datetime
+        start_datetime
     )
     
     return appointment
@@ -184,7 +184,10 @@ def reschedule_appointment(
     
     # Get service to calculate duration
     service = db.query(Service).filter(Service.id == old_appt.service_id).first()
-    new_end_utc_ts = reschedule_data.new_start_utc_ts + (service.duration_minutes * 60)
+    
+    # Convert Unix timestamps to datetime objects
+    new_start_datetime = dt.utcfromtimestamp(reschedule_data.new_start_utc_ts)
+    new_end_datetime = dt.utcfromtimestamp(reschedule_data.new_start_utc_ts + (service.duration_minutes * 60))
     
     # Check for conflicts at new time
     conflict = db.query(Appointment).filter(
@@ -193,8 +196,8 @@ def reschedule_appointment(
             Appointment.date == reschedule_data.new_date,
             Appointment.status.in_(['confirmed', 'pending']),
             Appointment.id != appointment_id,  # Exclude current appointment
-            Appointment.end_utc_ts > reschedule_data.new_start_utc_ts,
-            Appointment.start_utc_ts < new_end_utc_ts
+            Appointment.end_utc_ts > new_start_datetime,
+            Appointment.start_utc_ts < new_end_datetime
         )
     ).first()
     
@@ -206,8 +209,8 @@ def reschedule_appointment(
     
     # Update appointment
     old_appt.date = reschedule_data.new_date
-    old_appt.start_utc_ts = reschedule_data.new_start_utc_ts
-    old_appt.end_utc_ts = new_end_utc_ts
+    old_appt.start_utc_ts = new_start_datetime
+    old_appt.end_utc_ts = new_end_datetime
     
     db.commit()
     db.refresh(old_appt)
