@@ -264,8 +264,12 @@ Please try another date:
                         }
                     }
                 
-                slot_list = "\n".join([f"{i+1}. {slot['start_local']}" 
-                                      for i, slot in enumerate(slots[:10])])
+                # Format slot times as user-friendly (9:00 AM instead of ISO format)
+                from datetime import datetime as dt
+                slot_list = "\n".join([
+                    f"{i+1}. {dt.fromisoformat(slot['start_local']).strftime('%I:%M %p')}" 
+                    for i, slot in enumerate(slots[:10])
+                ])
                 
                 formatted_date = target_date.strftime("%d %b %Y")
                 
