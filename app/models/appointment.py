@@ -20,6 +20,9 @@ class Appointment(Base):
     
     # Patient information (stored in appointment for historical record)
     # Note: Appointments may also link to Patient table via patient_id
+    patient_name = Column(String, nullable=True)
+    patient_phone = Column(String, nullable=True)
+    patient_notes = Column(String, nullable=True)
     
     # Scheduling
     date = Column(Date, nullable=False)
