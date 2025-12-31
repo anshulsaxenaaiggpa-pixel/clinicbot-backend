@@ -11,6 +11,9 @@ from app.models.doctor import Doctor  # noqa: F401
 from app.models.service import Service  # noqa: F401
 from app.models.patient import Patient  # noqa: F401
 from app.models.appointment import Appointment  # noqa: F401
+from app.models.admin_user import AdminUser  # noqa: F401
+from app.models.audit_log import AuditLog  # noqa: F401
+from app.models.consent import ConsentLog  # noqa: F401
 
 __all__ = [
     "Clinic",
@@ -20,4 +23,7 @@ __all__ = [
     "Service",
     "Patient",
     "Appointment",
+    "AdminUser",
+    "AuditLog",
+    "ConsentLog",
 ]

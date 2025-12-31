@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code Generator{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">
+        <i class="bi bi-qr-code"></i> QR Code & WhatsApp Link Generator
+    </h2>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Generate WhatsApp QR Code</h5>
+                    <p class="text-muted">
+                        Select a doctor to generate a scannable QR code linking directly to their WhatsApp for
+                        appointment booking.
+                    </p>
+
+                    <form method="GET" action="/admin/tools/qr/">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <select class="form-select" id="doctorSelect" required>
+                                    <option value="">-- Select Doctor --</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">
+                                        {{ doctor.full_name }} - {{ doctor.specialty }} ({{ doctor.city }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="button" class="btn btn-primary w-100" onclick="generateQR()">
+                                    <i class="bi bi-qr-code"></i> Generate QR Code
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function generateQR() {
+        const doctorId = document.getElementById('doctorSelect').value;
+        if (!doctorId) {
+            alert('Please select a doctor');
+            return;
+        }
+        window.location.href = `/admin/tools/qr/${doctorId}`;
+    }
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@ python-multipart==0.0.6
 # Database
 sqlalchemy==2.0.23
 alembic==1.12.1
-psycopg2-binary==2.9.9
+psycopg==3.2.2
 asyncpg==0.29.0
 
 # Redis & Task Queue
@@ -18,6 +18,8 @@ flower==2.0.1  # Celery monitoring
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-dotenv==1.0.0
+bcrypt==4.1.1
+pyotp==2.9.0
 
 # Date & Time
 pytz==2023.3
@@ -39,3 +41,8 @@ razorpay==1.4.1
 # Utilities
 pydantic==2.5.0
 pydantic-settings==2.1.0
+qrcode[pil]==7.4.2
+
+# Testing
+pytest-asyncio==1.3.0
+

@@ -1,4 +1,4 @@
-"""FastAPI main application entry point"""
+"""FastAPI main application entry point - CuraSlot Admin API"""
 # CRITICAL: Import registry bootstrap FIRST to ensure all models are registered
 import app.db.base  # noqa - Must be first to register SQLAlchemy models
 
@@ -6,22 +6,48 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 
+# MANDATORY: Import startup validator for security checks
+from app.startup_validator import startup_validator
+
 # Debug: Confirm main.py is loading
 print("=" * 60)
-print("🚀 MAIN.PY LOADING - ClinicBot.ai API")
+print("🚀 MAIN.PY LOADING - CuraSlot Admin API")
 print("=" * 60)
 
 app = FastAPI(
-    title="ClinicBot.ai API",
+    title="CuraSlot Admin API",
     description="WhatsApp-first AI appointment booking system for clinics",
-    version="0.1.0",
+    version="1.0.0",
     debug=settings.DEBUG
 )
+
+# STARTUP SECURITY VALIDATION - Fail-fast on insecure config
+@app.on_event("startup")
+async def run_config_validation():
+    """
+    Run security validation on application startup.
+    
+    Application will exit immediately if critical security issues detected:
+    - DEBUG=True in production
+    - Weak session secrets (< 32 chars)
+    - Missing database/Redis URLs
+    - HTTPS not enforced in production
+    
+    This prevents insecure deployment - CANNOT BE BYPASSED.
+    """
+    print("\n" + "=" * 80)
+    print("🔒 RUNNING STARTUP SECURITY VALIDATION - CuraSlot Admin")
+    print("=" * 80)
+    startup_validator.validate_or_exit()
+    print("=" * 80)
+    print("✅ SECURITY VALIDATION PASSED - Application starting")
+    print("=" * 80 + "\n")
+
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.DEBUG else ["https://clinicbot.ai"],
+    allow_origins=["*"] if settings.DEBUG else ["https://curaslot.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,8 +59,8 @@ async def root():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "service": "ClinicBot.ai API",
-        "version": "0.1.0"
+        "service": "CuraSlot Admin API",
+        "version": "1.0.0"
     }
 
 
@@ -47,6 +73,7 @@ async def health_check():
     
     health_status = {
         "status": "healthy",
+        "service": "CuraSlot",
         "environment": settings.ENVIRONMENT,
         "database": "unknown",
         "redis": "unknown"

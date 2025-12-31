@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code - {{ doctor.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="mb-3">
+        <a href="/admin/tools/qr" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Generator
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ doctor.full_name }}</h5>
+                    <p class="text-muted">
+                        {{ doctor.specialty }} | {{ doctor.city }}
+                    </p>
+
+                    <div class="my-4">
+                        <img src="/admin/tools/qr/{{ doctor.id }}/download" alt="QR Code"
+                            style="max-width: 300px; width: 100%;" class="border rounded">
+                    </div>
+
+                    <a href="/admin/tools/qr/{{ doctor.id }}/download" class="btn btn-success btn-lg" download>
+                        <i class="bi bi-download"></i> Download QR Code (PNG)
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">WhatsApp Link</h5>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control font-monospace" value="{{ whatsapp_link }}"
+                            id="linkInput" readonly>
+                        <button class="btn btn-outline-secondary" onclick="copyLink()">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+
+                    <h5 class="card-title mt-4">Share Message</h5>
+                    <textarea class="form-control font-monospace" rows="8" readonly
+                        id="shareMessage">{{ share_message }}</textarea>
+                    <button class="btn btn-outline-secondary mt-2" onclick="copyMessage()">
+                        <i class="bi bi-clipboard"></i> Copy Message
+                    </button>
+
+                    <div class="alert alert-info mt-4">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Usage:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Print QR code for clinic posters</li>
+                            <li>Share link via SMS/WhatsApp/Email</li>
+                            <li>Add to clinic website</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyLink() {
+        const input = document.getElementById('linkInput');
+        input.select();
+        document.execCommand('copy');
+        alert('Link copied to clipboard!');
+    }
+
+    function copyMessage() {
+        const textarea = document.getElementById('shareMessage');
+        textarea.select();
+        document.execCommand('copy');
+        alert('Message copied to clipboard!');
+    }
+</script>
+{% endblock %}

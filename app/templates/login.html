@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <h3 class="card-title text-center mb-4">
+                    <i class="bi bi-shield-lock"></i> Admin Login
+                </h3>
+
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/admin/login">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" required autofocus
+                            value="{{ email or '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+
+                    {% if require_mfa %}
+                    <div class="mb-3">
+                        <label for="mfa_token" class="form-label">
+                            <i class="bi bi-phone"></i> MFA Code
+                        </label>
+                        <input type="text" class="form-control" id="mfa_token" name="mfa_token"
+                            placeholder="6-digit code" pattern="[0-9]{6}" required>
+                        <div class="form-text">Enter the 6-digit code from your authenticator app</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Account locked after 5 failed attempts
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                <i class="bi bi-shield-check"></i> Secure session (30 min expiry) | HTTPS only
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+# Admin UI Release - Requirements.txt Updates
+
+# Admin UI dependencies
+qrcode[pil]==7.4.2
+Pillow==10.1.0
+itsdangerous==2.1.2
+Jinja2==3.1.2
+
+# Existing dependencies (already in requirements.txt)
+# fastapi
+# uvicorn
+# sqlalchemy
+# pydantic
+# redis
+# bcrypt
+# pyotp
+# python-jose
+# pytest

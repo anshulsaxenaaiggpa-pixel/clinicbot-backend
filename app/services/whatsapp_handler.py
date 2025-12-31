@@ -9,6 +9,7 @@ from app.services.intent_classifier import IntentClassifier
 from app.services.conversation_manager import ConversationManager
 from app.services.whatsapp_sender import WhatsAppSender
 from app.services.patient_helpers import get_or_create_patient
+from app.services.consent_handler import check_consent, record_consent, CONSENT_TEXT_V1
 from app.db.database import SessionLocal
 
 logger = logging.getLogger(__name__)
@@ -72,12 +73,14 @@ class WhatsAppMessageHandler:
     Main WhatsApp bot message handler
     
     Flow:
-    1. Get/create patient record
-    2. Get/create user session
-    3. Classify intent
-    4. Route to conversation flow
-    5. Update session
-    6. Send response
+    1. Get clinic ID from WhatsApp number
+    2. **CHECK CONSENT (DPDP/GDPR)** ← NEW!
+    3. Get/create patient record
+    4. Get/create user session
+    5. Classify intent
+    6. Route to conversation flow
+    7. Update session
+    8. Send response
     """
     
     def __init__(self):
@@ -110,6 +113,46 @@ class WhatsAppMessageHandler:
                         provider=message_data.get("provider")
                     )
                     return
+                
+                # ===== DPDP/GDPR CONSENT CHECK (MANDATORY) =====
+                has_consent = check_consent(user_phone, clinic_id)
+                
+                if not has_consent:
+                    # First-time user - send consent prompt
+                    if message_text in ["1", "AGREE", "YES", "Y"]:
+                        # User agrees to consent
+                        record_consent(user_phone, clinic_id, True)
+                        logger.info(f"✅ Consent granted by {user_phone} for clinic {clinic_id}")
+                        
+                        await self.whatsapp_sender.send_message(
+                            to=user_phone,
+                            message="✅ Thank you! You can now book appointments.\n\nReply with:\n• *book* - Book appointment\n• *help* - See all options",
+                            provider=message_data.get("provider")
+                        )
+                        return
+                    
+                    elif message_text in ["2", "DECLINE", "NO", "N"]:
+                        # User declines consent
+                        record_consent(user_phone, clinic_id, False)
+                        logger.info(f"❌ Consent declined by {user_phone} for clinic {clinic_id}")
+                        
+                        await self.whatsapp_sender.send_message(
+                            to=user_phone,
+                            message="Understood. We cannot proceed without consent. Contact the clinic directly if needed.",
+                            provider=message_data.get("provider")
+                        )
+                        return
+                    
+                    else:
+                        # Show consent prompt
+                        logger.info(f"📋 Sending consent prompt to {user_phone}")
+                        await self.whatsapp_sender.send_message(
+                            to=user_phone,
+                            message=CONSENT_TEXT_V1,
+                            provider=message_data.get("provider")
+                        )
+                        return
+                # ===== END CONSENT CHECK =====
                 
                 patient = get_or_create_patient(
                     db=db,
