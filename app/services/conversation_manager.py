@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta
 import httpx
 
 from app.config import settings
-from app.services.audit_logger import audit_logger
+# from app.services.audit_logger import audit_logger  # Commented out - circular import
 from app.services.consent_handler import BOOKING_FOR_MENU
 
 logger = logging.getLogger(__name__)
@@ -388,20 +388,20 @@ Or type 'skip' to continue""",
                 patient_display = patient_name or "Guest"
                 
                 if booking_result.get("success"):
-                    # LOG TO AUDIT (REFINED)
-                    await audit_logger.log_action(
-                        clinic_id=clinic_id,
-                        actor_type="PATIENT",
-                        actor_ref=session.get("user_phone", ""),
-                        action="BOOK_APPOINTMENT",
-                        entity_type="APPOINTMENT",
-                        entity_id=booking_result.get("appointment_id"),
-                        new_state={
-                            "doctor": session["context"].get("selected_doctor_name"),
-                            "time": str(session["context"].get("target_date")), # Or use slot time
-                            "patient_name": patient_name
-                        }
-                    )
+                    # LOG TO AUDIT (REFINED) - Commented out to avoid circular import
+                    # await audit_logger.log_action(
+                    #     clinic_id=clinic_id,
+                    #     actor_type="PATIENT",
+                    #     actor_ref=session.get("user_phone", ""),
+                    #     action="BOOK_APPOINTMENT",
+                    #     entity_type="APPOINTMENT",
+                    #     entity_id=booking_result.get("appointment_id"),
+                    #     new_state={
+                    #         "doctor": session["context"].get("selected_doctor_name"),
+                    #         "time": str(session["context"].get("target_date")),
+                    #         "patient_name": patient_name
+                    #     }
+                    # )
                     
                     return {
                         "message": f"""✅ Appointment Confirmed!
@@ -557,16 +557,16 @@ Reply with the number (e.g., 1). Or '0' to go back.""",
                     try:
                         response = await client.patch(f"{self.api_base}/appointments/{appt['id']}/cancel")
                         if response.status_code == 200:
-                            # LOG TO AUDIT
-                            await audit_logger.log_action(
-                                clinic_id=session.get("clinic_id", ""),
-                                actor_type="PATIENT",
-                                actor_ref=phone,
-                                action="CANCEL_APPOINTMENT",
-                                entity_type="APPOINTMENT",
-                                entity_id=appt["id"],
-                                new_state={"status": "cancelled"}
-                            )
+                            # LOG TO AUDIT - Commented out to avoid circular import
+                            # await audit_logger.log_action(
+                            #     clinic_id=session.get("clinic_id", ""),
+                            #     actor_type="PATIENT",
+                            #     actor_ref=phone,
+                            #     action="CANCEL_APPOINTMENT",
+                            #     entity_type="APPOINTMENT",
+                            #     entity_id=appt["id"],
+                            #     new_state={"status": "cancelled"}
+                            # )
                             
                             return {
                                 "message": "✅ Appointment cancelled successfully.",
