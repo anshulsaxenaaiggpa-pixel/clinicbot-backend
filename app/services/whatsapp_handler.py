@@ -9,7 +9,8 @@ from app.services.intent_classifier import IntentClassifier
 from app.services.conversation_manager import ConversationManager
 from app.services.whatsapp_sender import WhatsAppSender
 from app.services.patient_helpers import get_or_create_patient
-from app.services.consent_handler import check_consent, record_consent, CONSENT_TEXT_V1
+from app.services.consent_handler import check_consent, record_consent, get_consent_text, BOOKING_MENU
+from app.services.data_requests import handle_ccpa_request, CCPA_COMMANDS
 from app.db.database import SessionLocal
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,18 @@ class WhatsAppMessageHandler:
                     )
                     return
                 
+                # ===== USA/GLOBAL CCPA/GDPR COMMANDS (DATA, DELETE, EXPORT) =====
+                msg_lower = message_text.lower().strip()
+                if msg_lower in CCPA_COMMANDS and user_phone.startswith("+1"):
+                    logger.info(f"🚨 CCPA Command intercepted: {msg_lower} from {user_phone}")
+                    ccpa_response = await handle_ccpa_request(user_phone, msg_lower)
+                    await self.whatsapp_sender.send_message(
+                        to=user_phone,
+                        message=ccpa_response,
+                        provider=message_data.get("provider")
+                    )
+                    return
+
                 # ===== DPDP/GDPR CONSENT CHECK (MANDATORY) =====
                 has_consent = check_consent(user_phone, clinic_id)
                 
@@ -121,19 +134,19 @@ class WhatsAppMessageHandler:
                     # First-time user - send consent prompt
                     if message_text in ["1", "AGREE", "YES", "Y"]:
                         # User agrees to consent
-                        record_consent(user_phone, clinic_id, True)
+                        await record_consent(user_phone, clinic_id, True)
                         logger.info(f"✅ Consent granted by {user_phone} for clinic {clinic_id}")
                         
                         await self.whatsapp_sender.send_message(
                             to=user_phone,
-                            message="✅ Thank you! You can now book appointments.\n\nReply with:\n• *book* - Book appointment\n• *help* - See all options",
+                            message=BOOKING_MENU,
                             provider=message_data.get("provider")
                         )
                         return
                     
                     elif message_text in ["2", "DECLINE", "NO", "N"]:
                         # User declines consent
-                        record_consent(user_phone, clinic_id, False)
+                        await record_consent(user_phone, clinic_id, False)
                         logger.info(f"❌ Consent declined by {user_phone} for clinic {clinic_id}")
                         
                         await self.whatsapp_sender.send_message(
@@ -144,11 +157,11 @@ class WhatsAppMessageHandler:
                         return
                     
                     else:
-                        # Show consent prompt
+                        # Show consent prompt (Language/Region aware)
                         logger.info(f"📋 Sending consent prompt to {user_phone}")
                         await self.whatsapp_sender.send_message(
                             to=user_phone,
-                            message=CONSENT_TEXT_V1,
+                            message=get_consent_text(user_phone),
                             provider=message_data.get("provider")
                         )
                         return
@@ -157,8 +170,7 @@ class WhatsAppMessageHandler:
                 patient = get_or_create_patient(
                     db=db,
                     clinic_id=clinic_id,
-                    phone=user_phone,
-                    whatsapp_name=whatsapp_name
+                    phone=user_phone
                 )
                 
                 logger.info(f"Patient {patient.id} ({patient.name}) - {user_phone}")
@@ -170,6 +182,7 @@ class WhatsAppMessageHandler:
             session = self._get_session(user_phone)
             session["patient_id"] = str(patient.id)
             session["clinic_id"] = str(clinic_id)
+            session["user_phone"] = user_phone  # Ensure phone is in session for conversation manager
             
             # Classify intent
             intent_result = await self.intent_classifier.classify(
@@ -297,6 +310,11 @@ class WhatsAppMessageHandler:
             Clinic UUID as string, or None if not found
         """
         from app.models.clinic import Clinic
+        
+        # Handle None or empty to_number
+        if not to_number:
+            logger.warning("No 'to' number in message data")
+            return None
         
         # Clean phone number (remove 'whatsapp:' prefix if present)
         clean_number = to_number.replace("whatsapp:", "").strip()

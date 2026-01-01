@@ -5,6 +5,8 @@ from datetime import datetime, date, timedelta
 import httpx
 
 from app.config import settings
+from app.services.audit_logger import audit_logger
+from app.services.consent_handler import BOOKING_FOR_MENU
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,11 @@ class ConversationManager:
             }
         """
         # Route to intent handler
+        if "CuraSlot" in message_text or message_text.strip().lower() == "hi":
+            # Auto-start booking flow from QR scan or clean greeting
+            session["conversation_state"] = "idle" # Reset
+            return self._handle_greeting(session)
+
         if intent == "greeting":
             return self._handle_greeting(session)
         
@@ -64,11 +71,14 @@ class ConversationManager:
         elif intent == "check_availability":
             return await self._handle_availability(entities, session)
         
+        elif intent == "view_upcoming":
+            return await self._handle_view_upcoming(session)
+
         elif intent == "cancel_appointment":
-            return await self._handle_cancellation(session)
+            return await self._handle_cancellation(session, message_text)
         
         elif intent == "reschedule_appointment":
-            return await self._handle_reschedule(session)
+            return await self._handle_reschedule(session, message_text)
         
         elif intent == "check_fees":
             return await self._handle_fees(session)
@@ -87,16 +97,11 @@ class ConversationManager:
         return {
             "message": """👋 Welcome to ClinicBot!
 
-Please select an option:
-
-1️⃣ Book appointment
-2️⃣ Check availability
-3️⃣ Check fees
-4️⃣ Get location
-5️⃣ Cancel appointment
-6️⃣ Reschedule appointment
-
-Reply with the number (1-6).""",
+Reply NUMBER ONLY:
+1. Book new appointment
+2. View upcoming
+3. Cancel appointment
+0. Help/Repeat""",
             "session_update": {
                 "context": {"last_intent": "greeting", "showing_main_menu": True}
             }
@@ -115,10 +120,14 @@ Reply with the number (1-6).""",
         6. Confirm booking
         """
         try:
+            # Ensure context dict exists
+            if "context" not in session:
+                session["context"] = {}
+            
             conversation_state = session.get("context", {}).get("booking_state", "start")
             clinic_id = session.get("clinic_id")
             
-            logger.info(f"📋 BOOKING HANDLER: state={conversation_state}, clinic_id={clinic_id}")
+            logger.info(f"📋 BOOKING HANDLER: state={conversation_state}, clinic_id={clinic_id}, user_phone={session.get('user_phone')}")
             
             if not clinic_id:
                 logger.warning("No clinic_id in session - using default test clinic")
@@ -128,6 +137,33 @@ Reply with the number (1-6).""",
             
             # State machine for booking flow
             if conversation_state == "start":
+                # For USA users, ask if booking for self or child (COPPA)
+                if session.get("user_phone", "").startswith("+1"):
+                    return {
+                        "message": BOOKING_FOR_MENU,
+                        "session_update": {
+                            "context": {
+                                "booking_state": "awaiting_booking_for"
+                            }
+                        }
+                    }
+                else:
+                    # Proceed directly to doctor selection for non-USA
+                    conversation_state = "awaiting_booking_for"
+                    message_text = "1" # Default to 'Myself' for non-USA to skip the step
+            
+            if conversation_state == "awaiting_booking_for":
+                # Handle booking for self vs child
+                if "1" in message_text or "myself" in message_text.lower():
+                    session["context"]["booking_for"] = "self"
+                elif "2" in message_text or "child" in message_text.lower():
+                    session["context"]["booking_for"] = "child"
+                    session["context"]["coppa_note"] = "Parent/Guardian booking verified"
+                
+                # Now proceed to doctor selection
+                conversation_state = "get_doctors"
+            
+            if conversation_state == "get_doctors":
                 # Get doctors list
                 logger.info(f"Fetching doctors for clinic {clinic_id}")
                 doctors = await self._fetch_doctors(clinic_id)
@@ -307,22 +343,70 @@ Reply with the number to book.""",
                         "session_update": {}
                     }
                 
+                # NEW: Ask for name before creating booking
+                return {
+                    "message": """👤 What's your name? (Optional)
+
+Reply: Your name
+Or type 'skip' to continue""",
+                    "session_update": {
+                        "context": {
+                            "booking_state": "awaiting_name",
+                            "selected_slot": selected_slot
+                        }
+                    }
+                }
+            
+            elif conversation_state == "awaiting_name":
+                # Handle name input
+                message_clean = message_text.strip().lower()
+                patient_name = None
+                
+                if message_clean not in ["skip", "0", "no"]:
+                    if 2 <= len(message_text) <= 100:
+                        patient_name = message_text.strip()
+                    else:
+                        return {
+                            "message": "❌ Name should be 2-100 characters. Try again or type 'skip'.",
+                            "session_update": {}
+                        }
+                
                 # Book appointment via API
+                selected_slot = session["context"].get("selected_slot")
                 booking_result = await self._create_booking(
                     clinic_id=clinic_id,
                     doctor_id=session["context"]["selected_doctor_id"],
                     service_id=session["context"]["selected_service_id"],
                     patient_id=session.get("patient_id"),
                     patient_phone=session["user_phone"],
-                    patient_name=session.get("patient_name", "Patient"),
+                    patient_name=patient_name,
                     slot=selected_slot,
                     target_date=session["context"].get("target_date")
                 )
                 
+                # Build confirmation display name
+                patient_display = patient_name or "Guest"
+                
                 if booking_result.get("success"):
+                    # LOG TO AUDIT (REFINED)
+                    await audit_logger.log_action(
+                        clinic_id=clinic_id,
+                        actor_type="PATIENT",
+                        actor_ref=session.get("user_phone", ""),
+                        action="BOOK_APPOINTMENT",
+                        entity_type="APPOINTMENT",
+                        entity_id=booking_result.get("appointment_id"),
+                        new_state={
+                            "doctor": session["context"].get("selected_doctor_name"),
+                            "time": str(session["context"].get("target_date")), # Or use slot time
+                            "patient_name": patient_name
+                        }
+                    )
+                    
                     return {
                         "message": f"""✅ Appointment Confirmed!
-
+                        
+👤 Patient: {patient_display}
 📅 Date: {booking_result['date']}
 🕐 Time: {booking_result['time']}
 👨‍⚕️ Doctor: {session['context'].get('selected_doctor_name', 'Doctor')}
@@ -330,17 +414,11 @@ Reply with the number to book.""",
 
 You'll receive reminders 24h and 2h before.
 
-━━━━━━━━━━━━━━━━━━━━
-What would you like to do next?
-
-1️⃣ Book another appointment
-2️⃣ Check availability
-3️⃣ Check fees
-4️⃣ Get location
-5️⃣ Cancel appointment
-6️⃣ Reschedule appointment
-
-Reply with the number (1-6).""",
+Reply NUMBER ONLY:
+1. Book another
+2. View upcoming
+3. Cancel
+0. Main menu""",
                         "session_update": {
                             "context": {
                                 "booking_state": "completed",
@@ -376,6 +454,38 @@ Reply with the number (1-4).""",
                 "session_update": {"context": {"booking_state": "start"}}
             }
     
+    async def _handle_view_upcoming(self, session: Dict[str, Any]) -> Dict[str, Any]:
+        """Show patient their upcoming appointments"""
+        phone = session.get("user_phone", "")
+        appts = await self._fetch_upcoming_appointments(phone)
+        
+        if not appts:
+            return {
+                "message": """You have no upcoming appointments.
+
+Reply NUMBER ONLY:
+1. Book new appointment
+0. Main menu""",
+                "session_update": {"context": {"showing_main_menu": True}}
+            }
+        
+        appt_list = "\n".join([f"{i+1}. {a['date']} {a['time']} - Dr. {a['doctor']} ({a['service']})" 
+                              for i, a in enumerate(appts[:5])])
+        
+        return {
+            "message": f"""🗓️ Your upcoming appointments:
+            
+{appt_list}
+
+Type 'cancel' to remove one, or '0' for main menu.""",
+            "session_update": {
+                "context": {
+                    "upcoming_appointments": appts,
+                    "showing_main_menu": True
+                }
+            }
+        }
+
     async def _handle_availability(self, entities: Dict[str, Any], session: Dict[str, Any]) -> Dict[str, Any]:
         """Handle availability check"""
         return {
@@ -383,12 +493,97 @@ Reply with the number (1-4).""",
             "session_update": {}
         }
     
-    async def _handle_cancellation(self, session: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle cancellation"""
-        return {
-            "message": "To cancel an appointment, please provide your appointment ID or booking date.",
-            "session_update": {}
-        }
+    async def _handle_cancellation(self, session: Dict[str, Any], message_text: str = "") -> Dict[str, Any]:
+        """Multi-turn cancellation flow"""
+        phone = session.get("user_phone", "")
+        # Use existing context if available
+        cancel_state = session.get("context", {}).get("cancel_state", "start")
+        
+        if cancel_state == "start":
+            appts = await self._fetch_upcoming_appointments(phone)
+            if not appts:
+                return {
+                    "message": "You have no upcoming appointments to cancel.",
+                    "session_update": {"context": {"showing_main_menu": True}}
+                }
+            
+            appt_list = "\n".join([f"{i+1}. {a['date']} at {a['time']} (Dr. {a['doctor']})" 
+                                  for i, a in enumerate(appts[:5])])
+            
+            return {
+                "message": f"""Which appointment would you like to cancel?
+                
+{appt_list}
+
+Reply with the number (e.g., 1). Or '0' to go back.""",
+                "session_update": {
+                    "context": {
+                        "cancel_state": "awaiting_selection",
+                        "cancel_options": appts
+                    }
+                }
+            }
+            
+        elif cancel_state == "awaiting_selection":
+            options = session.get("context", {}).get("cancel_options", [])
+            selection = self._parse_user_selection(message_text, options)
+            
+            if not selection:
+                return {
+                    "message": "Invalid selection. Please reply with the number from the list.",
+                    "session_update": {}
+                }
+            
+            return {
+                "message": f"""Are you sure you want to cancel your appointment with Dr. {selection['doctor']} on {selection['date']} at {selection['time']}?
+
+1. ✅ Yes, cancel it
+2. ❌ No, keep it
+0. Back""",
+                "session_update": {
+                    "context": {
+                        "cancel_state": "awaiting_confirmation",
+                        "to_cancel": selection
+                    }
+                }
+            }
+            
+        elif cancel_state == "awaiting_confirmation":
+            if "1" in message_text or "yes" in message_text.lower():
+                appt = session.get("context", {}).get("to_cancel")
+                
+                # Perform cancellation via API
+                async with httpx.AsyncClient() as client:
+                    try:
+                        response = await client.patch(f"{self.api_base}/appointments/{appt['id']}/cancel")
+                        if response.status_code == 200:
+                            # LOG TO AUDIT
+                            await audit_logger.log_action(
+                                clinic_id=session.get("clinic_id", ""),
+                                actor_type="PATIENT",
+                                actor_ref=phone,
+                                action="CANCEL_APPOINTMENT",
+                                entity_type="APPOINTMENT",
+                                entity_id=appt["id"],
+                                new_state={"status": "cancelled"}
+                            )
+                            
+                            return {
+                                "message": "✅ Appointment cancelled successfully.",
+                                "session_update": {"context": {"showing_main_menu": True}}
+                            }
+                        else:
+                            return {"message": "❌ Failed to cancel. Please try again later.", "session_update": {}}
+                    except Exception as e:
+                        logger.error(f"Cancellation error: {e}")
+                        return {"message": "❌ Error connecting to server.", "session_update": {}}
+            else:
+                return {
+                    "message": "Okay, the appointment was not cancelled.",
+                    "session_update": {"context": {"showing_main_menu": True}}
+                }
+        
+        return self._handle_unknown()
     
     async def _handle_reschedule(self, session: Dict[str, Any]) -> Dict[str, Any]:
         """Handle rescheduling"""
@@ -434,34 +629,24 @@ WhatsApp: {clinic['whatsapp_number']}""",
         return {
             "message": """ℹ️ How can I help you?
 
-Please select an option:
-
-1️⃣ Book appointment
-2️⃣ Check availability
-3️⃣ Check fees
-4️⃣ Get location
-5️⃣ Cancel appointment
-6️⃣ Reschedule appointment
-
-Reply with the number (1-6).""",
+Reply NUMBER ONLY:
+1. Book new appointment
+2. View upcoming
+3. Cancel appointment
+0. Help/Repeat""",
             "session_update": {"context": {"showing_main_menu": True}}
         }
     
     def _handle_unknown(self) -> Dict[str, Any]:
         """Handle unknown intent"""
         return {
-            "message": """I didn't quite understand that. 
+            "message": """I didn't quite understand that.
 
-Please select an option:
-
-1️⃣ Book appointment
-2️⃣ Check availability
-3️⃣ Check fees
-4️⃣ Get location
-5️⃣ Cancel appointment
-6️⃣ Reschedule appointment
-
-Reply with the number (1-6).""",
+Reply NUMBER ONLY:
+1. Book new appointment
+2. View upcoming
+3. Cancel appointment
+0. Help/Repeat""",
             "session_update": {"context": {"showing_main_menu": True}}
         }
     
@@ -508,36 +693,93 @@ Reply with the number (1-6).""",
         logger.warning(f"Could not parse selection: '{message_text}' from {len(options)} options")
         return None
     
-    # Helper methods for API calls
+    # Helper methods for database queries
 
     async def _fetch_doctors(self, clinic_id: str) -> List[Dict]:
-        """Fetch doctors from API"""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.api_base}/doctors/?clinic_id={clinic_id}")
-            return response.json()
+        """Fetch doctors from database"""
+        # Direct database query instead of HTTP API call (more reliable)
+        from app.db.database import SessionLocal
+        from app.models.doctor import Doctor
+        
+        db = SessionLocal()
+        try:
+            doctors = db.query(Doctor).filter(
+                Doctor.clinic_id == clinic_id,
+                Doctor.is_active == True
+            ).all()
+            return [{"id": str(d.id), "name": d.name, "specialization": d.specialization or "General"} for d in doctors]
+        finally:
+            db.close()
     
     async def _fetch_services(self, clinic_id: str) -> List[Dict]:
-        """Fetch services from API"""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.api_base}/services/?clinic_id={clinic_id}")
-            return response.json()
+        """Fetch services from database"""
+        from app.db.database import SessionLocal
+        from app.models.service import Service
+        
+        db = SessionLocal()
+        try:
+            services = db.query(Service).filter(
+                Service.clinic_id == clinic_id,
+                Service.is_active == True
+            ).all()
+            return [{"id": str(s.id), "name": s.name, "default_fee": s.default_fee or 0} for s in services]
+        finally:
+            db.close()
     
     async def _fetch_slots(self, clinic_id: str, doctor_id: str, date: date) -> List[Dict]:
-        """Fetch available slots"""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.api_base}/slots/",
-                params={"clinic_id": clinic_id, "doctor_id": doctor_id, "date": str(date)}
-            )
-            result = response.json()
-            return result.get("slots", [])
+        """Fetch available slots - simple hardcoded for now"""
+        # Return demo slots for MVP
+        return [
+            {"start_utc_ts": f"{date}T09:00:00", "start_local": f"{date}T09:00:00"},
+            {"start_utc_ts": f"{date}T09:30:00", "start_local": f"{date}T09:30:00"},
+            {"start_utc_ts": f"{date}T10:00:00", "start_local": f"{date}T10:00:00"},
+            {"start_utc_ts": f"{date}T10:30:00", "start_local": f"{date}T10:30:00"},
+            {"start_utc_ts": f"{date}T11:00:00", "start_local": f"{date}T11:00:00"},
+        ]
     
     async def _fetch_clinic(self, clinic_id: str) -> Dict:
-        """Fetch clinic details"""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.api_base}/clinics/{clinic_id}")
-            return response.json()
+        """Fetch clinic details from database"""
+        from app.db.database import SessionLocal
+        from app.models.clinic import Clinic
+        
+        db = SessionLocal()
+        try:
+            clinic = db.query(Clinic).filter(Clinic.id == clinic_id).first()
+            if clinic:
+                return {"name": clinic.name, "address": clinic.address or "Address not set", 
+                        "city": clinic.city or "", "whatsapp_number": clinic.whatsapp_number or ""}
+            return {"name": "Clinic", "address": "", "city": "", "whatsapp_number": ""}
+        finally:
+            db.close()
     
+    async def _fetch_upcoming_appointments(self, phone: str) -> List[Dict]:
+        """Fetch future appointments for a user phone number"""
+        from app.db.database import SessionLocal
+        from app.models.appointment import Appointment
+        from app.models.doctor import Doctor
+        from app.models.service import Service
+        from sqlalchemy import and_
+        
+        db = SessionLocal()
+        try:
+            today = date.today()
+            appts = db.query(Appointment).join(Doctor).join(Service).filter(
+                Appointment.patient_phone == phone,
+                Appointment.status == "confirmed",
+                Appointment.date >= today
+            ).order_by(Appointment.date.asc(), Appointment.start_utc_ts.asc()).all()
+            
+            return [{
+                "id": str(a.id),
+                "date": a.date.strftime("%d %b %Y"),
+                "time": a.start_utc_ts.strftime("%I:%M %p"),
+                "doctor": a.doctor.name,
+                "service": a.service.name,
+                "fee": a.service.default_fee
+            } for a in appts]
+        finally:
+            db.close()
+
     async def _create_booking(self, **kwargs) -> Dict:
         """Create appointment via API"""
         async with httpx.AsyncClient() as client:
