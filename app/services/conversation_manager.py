@@ -6,7 +6,7 @@ import httpx
 
 from app.config import settings
 # from app.services.audit_logger import audit_logger  # Commented out - circular import
-from app.services.consent_handler import BOOKING_FOR_MENU
+# from app.services.consent_handler import BOOKING_FOR_MENU  # Not used
 
 logger = logging.getLogger(__name__)
 
