@@ -278,10 +278,7 @@ async def dashboard(
     # Get stats
     total_doctors = db.query(Doctor).count()
     active_doctors = db.query(Doctor).filter(Doctor.is_active == True).count()
-    searchable_doctors = db.query(Doctor).filter(
-        Doctor.is_searchable == True,
-        Doctor.is_active == True
-    ).count()
+
     
     # Recent audit events (last 10)
     recent_events = db.query(AuditLog).order_by(
@@ -296,8 +293,7 @@ async def dashboard(
             "csrf_token": request.state.csrf_token,
             "stats": {
                 "total_doctors": total_doctors,
-                "active_doctors": active_doctors,
-                "searchable_doctors": searchable_doctors
+                "active_doctors": active_doctors
             },
             "recent_events": recent_events
         }
