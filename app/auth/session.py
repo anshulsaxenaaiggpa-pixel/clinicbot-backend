@@ -186,8 +186,8 @@ class SessionManager:
         return {
             "key": self.COOKIE_NAME,
             "httponly": True,
-            "secure": settings.ADMIN_UI_HTTPS_ONLY,  # True in production
-            "samesite": "strict",
+            "secure": False,  # Railway uses HTTP internally - changed from ADMIN_UI_HTTPS_ONLY
+            "samesite": "lax",  # Changed from "strict" to allow redirects
             "max_age": self.SESSION_TTL_SECONDS
         }
 

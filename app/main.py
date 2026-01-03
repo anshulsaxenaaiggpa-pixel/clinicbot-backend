@@ -100,8 +100,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Session Middleware (Required for Admin UI flash messages)
-app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET_KEY)
+# Session Middleware (Required for Admin UI with proper Railway HTTP config)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SESSION_SECRET_KEY,
+    max_age=1800,  # 30 minutes
+    same_site="lax",  # Allow redirects (changed from strict)
+    https_only=False  # Railway HTTP environment
+)
 
 
 @app.get("/")
