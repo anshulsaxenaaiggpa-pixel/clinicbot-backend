@@ -280,10 +280,12 @@ async def dashboard(
     active_doctors = db.query(Doctor).filter(Doctor.is_active == True).count()
 
     
-    # Recent audit events (last 10)
-    recent_events = db.query(AuditLog).order_by(
-        AuditLog.timestamp.desc()
-    ).limit(10).all()
+    # Recent audit events - TEMPORARILY DISABLED due to schema mismatch
+    # TODO: Run alembic migration to fix audit_log table schema
+    # recent_events = db.query(AuditLog).order_by(
+    #     AuditLog.timestamp.desc()
+    # ).limit(10).all()
+    recent_events = []  # Empty for now until migration is run
     
     return templates.TemplateResponse(
         "dashboard.html",
