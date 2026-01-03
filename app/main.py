@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 import traceback
 from app.config import settings
@@ -108,6 +109,12 @@ app.add_middleware(
     same_site="lax",  # Allow redirects (changed from strict)
     https_only=False  # Railway HTTP environment
 )
+
+# Mount static files for logo and assets
+from pathlib import Path
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 @app.get("/")
