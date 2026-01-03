@@ -39,25 +39,25 @@ async def audit_logs_page(
     
     # Base query - last N days
     cutoff_date = datetime.utcnow() - timedelta(days=days)
-    query = db.query(AuditLog).filter(AuditLog.created_at >= cutoff_date)
+    query = db.query(AuditLog).filter(AuditLog.timestamp >= cutoff_date)
     
     # Apply filters
     if event_type:
-        query = query.filter(AuditLog.event_type == event_type)
+        query = query.filter(AuditLog.action == event_type)
     
     if actor_id:
-        query = query.filter(AuditLog.actor_id == actor_id)
+        query = query.filter(AuditLog.actor_reference == actor_id)
     
     # Get total count
     total = query.count()
     
     # Paginate
-    logs = query.order_by(AuditLog.created_at.desc()).offset(offset).limit(page_size).all()
+    logs = query.order_by(AuditLog.timestamp.desc()).offset(offset).limit(page_size).all()
     
     total_pages = (total + page_size - 1) // page_size
     
     # Get unique event types for filter dropdown
-    event_types = db.query(AuditLog.event_type).distinct().order_by(AuditLog.event_type).all()
+    event_types = db.query(AuditLog.action).distinct().order_by(AuditLog.action).all()
     event_types = [et[0] for et in event_types]
     
     return templates.TemplateResponse(
@@ -89,17 +89,17 @@ async def export_audit_logs_csv(
     """Export filtered audit logs as CSV."""
     # Base query
     cutoff_date = datetime.utcnow() - timedelta(days=days)
-    query = db.query(AuditLog).filter(AuditLog.created_at >= cutoff_date)
+    query = db.query(AuditLog).filter(AuditLog.timestamp >= cutoff_date)
     
     # Apply filters
     if event_type:
-        query = query.filter(AuditLog.event_type == event_type)
+        query = query.filter(AuditLog.action == event_type)
     
     if actor_id:
-        query = query.filter(AuditLog.actor_id == actor_id)
+        query = query.filter(AuditLog.actor_reference == actor_id)
     
     # Get logs (limit to 10,000 for performance)
-    logs = query.order_by(AuditLog.created_at.desc()).limit(10000).all()
+    logs = query.order_by(AuditLog.timestamp.desc()).limit(10000).all()
     
     # Create CSV
     output = io.StringIO()
@@ -118,16 +118,16 @@ async def export_audit_logs_csv(
     # Write rows
     for log in logs:
         # Extract IP address from metadata if present
-        ip_address = ""
-        if log.metadata and isinstance(log.metadata, dict):
-            ip_address = log.metadata.get("ip_address", "")
+        ip_address = log.ip_address or ""
+        if not ip_address and log.new_state and isinstance(log.new_state, dict):
+            ip_address = log.new_state.get("ip_address", "")
         
         writer.writerow([
-            log.created_at.isoformat(),
-            log.event_type,
-            log.actor,
-            log.actor_id,
-            str(log.metadata) if log.metadata else "",
+            log.timestamp.isoformat(),
+            log.action,
+            log.actor_type,
+            log.actor_reference,
+            str(log.old_state) if log.old_state else "",
             ip_address
         ])
     

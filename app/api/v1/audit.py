@@ -19,12 +19,14 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 
 class AuditQueryResponse(BaseModel):
     """Response from audit query."""
-    event_id: str
-    event_type: str
-    actor: str
-    actor_id: str
-    patient_phone_hash: Optional[str]
-    metadata: Optional[dict]
+    id: str
+    action: str  # Changed from event_type
+    actor_type: str  # Changed from actor
+    actor_reference: str  # Changed from actor_id
+    entity_type: str
+    entity_id: Optional[str]
+    old_state: Optional[dict]
+    new_state: Optional[dict]  # Changed from metadata
     timestamp: str
     
     class Config:
@@ -62,12 +64,14 @@ def query_audit_logs(
     # Convert to response format
     return [
         AuditQueryResponse(
-            event_id=log.event_id,
-            event_type=log.event_type,
-            actor=log.actor,
-            actor_id=log.actor_id,
-            patient_phone_hash=log.patient_phone_hash,
-            metadata=log.metadata,
+            id=log.id,
+            action=log.action,
+            actor_type=log.actor_type,
+            actor_reference=log.actor_reference,
+            entity_type=log.entity_type,
+            entity_id=log.entity_id,
+            old_state=log.old_state,
+            new_state=log.new_state,
             timestamp=log.timestamp.isoformat()
         )
         for log in results
@@ -89,7 +93,7 @@ def get_audit_stats(db: Session = Depends(get_db)):
     # Count by event type
     event_counts = {}
     for log in recent_logs:
-        event_counts[log.event_type] = event_counts.get(log.event_type, 0) + 1
+        event_counts[log.action] = event_counts.get(log.action, 0) + 1
     
     return {
         "total_events": len(recent_logs),

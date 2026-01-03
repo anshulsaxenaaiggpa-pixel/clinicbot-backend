@@ -94,8 +94,8 @@ class RetentionPolicy:
         
         audit_logs_to_delete = db.query(AuditLog).filter(
             and_(
-                AuditLog.created_at < cutoff_audit,
-                AuditLog.event_type.in_(deletable_event_types)
+                AuditLog.timestamp < cutoff_audit,
+                AuditLog.action.in_(deletable_event_types)
             )
         )
         
@@ -139,7 +139,7 @@ class RetentionPolicy:
                 ConversationState.expires_at < cutoff_conversation
             ).count(),
             "audit_logs_eligible": db.query(AuditLog).filter(
-                AuditLog.created_at < cutoff_audit
+                AuditLog.timestamp < cutoff_audit
             ).count(),
             "cutoff_dates": {
                 "appointments": cutoff_appointment.isoformat(),

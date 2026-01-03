@@ -282,7 +282,7 @@ async def dashboard(
     
     # Recent audit events (last 10)
     recent_events = db.query(AuditLog).order_by(
-        AuditLog.created_at.desc()
+        AuditLog.timestamp.desc()
     ).limit(10).all()
     
     return templates.TemplateResponse(

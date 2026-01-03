@@ -59,26 +59,24 @@ class AuditService:
             should_close = True
         
         try:
-            # Generate unique event ID
-            event_id = str(uuid.uuid4())
+            # For now, use a default clinic_id until we have proper context
+            # This is a temporary solution - ideally we'd get clinic_id from context
+            default_clinic_id = "00000000-0000-0000-0000-000000000000"
             
-            # Hash patient phone if provided
-            patient_hash = None
-            if patient_phone:
-                patient_hash = AuditLog.hash_phone(patient_phone)
-            
-            # Sanitize metadata (remove any PHI)
-            safe_metadata = AuditService._sanitize_metadata(metadata) if metadata else None
-            
-            # Create audit entry
+            # Map the new-style parameters to the actual schema
+            # actor -> actor_type, actor_id -> actor_reference, event_type -> action
             audit = AuditLog(
-                event_id=event_id,
-                event_type=event_type,
-                actor=actor,
-                actor_id=actor_id,
-                patient_phone_hash=patient_hash,
-                event_metadata=safe_metadata,
-                timestamp=datetime.utcnow()
+                id=str(uuid.uuid4()),
+                clinic_id=default_clinic_id,
+                actor_type=actor,  # system/clinic/admin/patient
+                actor_reference=actor_id,  # phone number or admin ID
+                action=event_type,  # The event type becomes the action
+                entity_type="admin_action",  # Generic type for admin actions
+                entity_id=None,
+                old_state=None,
+                new_state=metadata,  # Store metadata in new_state
+                timestamp=datetime.utcnow(),
+                ip_address=metadata.get("ip_address") if metadata else None
             )
             
             db.add(audit)
@@ -145,14 +143,16 @@ class AuditService:
             
             # Apply filters
             if event_type:
-                query = query.filter(AuditLog.event_type == event_type)
+                query = query.filter(AuditLog.action == event_type)
             
             if actor:
-                query = query.filter(AuditLog.actor == actor)
+                query = query.filter(AuditLog.actor_type == actor)
             
-            if patient_phone:
-                phone_hash = AuditLog.hash_phone(patient_phone)
-                query = query.filter(AuditLog.patient_phone_hash == phone_hash)
+            # Note: patient_phone filter is not supported anymore since
+            # the schema doesn't have patient_phone_hash field
+            # if patient_phone:
+            #     phone_hash = AuditLog.hash_phone(patient_phone)
+            #     query = query.filter(AuditLog.patient_phone_hash == phone_hash)
             
             if start_time:
                 query = query.filter(AuditLog.timestamp >= start_time)
