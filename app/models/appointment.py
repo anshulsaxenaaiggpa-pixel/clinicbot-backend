@@ -17,16 +17,17 @@ class Appointment(Base):
     """
     __tablename__ = "appointments"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    clinic_id = Column(UUID(as_uuid=True), ForeignKey("clinics.id"), nullable=False)
-    doctor_id = Column(UUID(as_uuid=True), ForeignKey("doctors.id"), nullable=False)
-    service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=False)
+    doctor_id = Column(String(36), ForeignKey("doctors.id"), nullable=False)
+    service_id = Column(String(36), ForeignKey("services.id"), nullable=False)
     
     # Patient information (denormalized for performance and outage safety)
     patient_phone = Column(String(15), nullable=False)  # IDENTITY KEY
     patient_name = Column(String(100), nullable=True)   # UX only, optional
     
-    # Scheduling (UTC timestamps)
+    # Scheduling (date + UTC timestamps)
+    date = Column(DateTime(timezone=False), nullable=False)  # Date column exists in DB with NOT NULL
     start_utc_ts = Column(DateTime(timezone=True), nullable=False)
     end_utc_ts = Column(DateTime(timezone=True), nullable=False)
     
@@ -34,11 +35,13 @@ class Appointment(Base):
     # Values: 'booked', 'cancelled', 'no_show', 'completed'
     status = Column(String(20), default="booked", nullable=False)
     
+    # Financial tracking
+    amount_paid = Column(Integer, default=0, nullable=False)
+    
     # Optional metadata
     cancellation_reason = Column(String, nullable=True)
     
-    # Audit metadata
-    source = Column(String(20), default="whatsapp")  # patient/staff
+    # Audit metadata (no source column in DB)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     

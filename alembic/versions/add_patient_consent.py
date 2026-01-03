@@ -23,25 +23,17 @@ depends_on = None
 def upgrade():
     """Create patient_consent table with required indexes."""
     
-    # Create consent_status enum
-    consent_status_enum = postgresql.ENUM('granted', 'withdrawn', name='consent_status')
-    consent_status_enum.create(op.get_bind())
-    
-    # Create channel enum
-    channel_enum = postgresql.ENUM('whatsapp', name='channel')
-    channel_enum.create(op.get_bind())
-    
     # Create patient_consent table
     op.create_table(
         'patient_consent',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column('id', sa.String(36), primary_key=True),
         sa.Column('phone_number', sa.String(15), nullable=False),
         sa.Column('consent_text', sa.String(), nullable=False),
         sa.Column('consent_version', sa.String(50), nullable=False),
-        sa.Column('consent_status', consent_status_enum, nullable=False),
+        sa.Column('consent_status', sa.String(20), nullable=False),
         sa.Column('timestamp', sa.DateTime(timezone=True), nullable=False),
         sa.Column('ip_address', sa.String(50), nullable=True),
-        sa.Column('channel', channel_enum, nullable=False, server_default='whatsapp'),
+        sa.Column('channel', sa.String(20), nullable=False, server_default='whatsapp'),
     )
     
     # Create indexes for fast consent checks

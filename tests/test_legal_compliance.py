@@ -16,7 +16,8 @@ Tests:
 import pytest
 from datetime import datetime
 
-from app.models.patient_consent import PatientConsent, CONSENT_TEXT_V1
+from app.models.consent import ConsentLog
+from app.services.consent_service import CONSENT_TEXT_V1
 from app.models.conversation_state import ConversationState, BookingState
 from app.models.doctor import Doctor
 from app.models.audit_log import AuditLog
@@ -50,9 +51,9 @@ class TestLegalComplianceVerification:
         patient = db_session.query(Patient).filter(Patient.phone_number == phone).first()
         # Patient may exist but consent should not be granted yet
         
-        consent = db_session.query(PatientConsent).filter(
-            PatientConsent.phone_number == phone,
-            PatientConsent.consent_status == "granted"
+        consent = db_session.query(ConsentLog).filter(
+            ConsentLog.phone == phone,
+            ConsentLog.consent_given == True
         ).first()
         assert consent is None, "Consent should not be granted before YES response"
     
@@ -285,10 +286,10 @@ class TestLegalComplianceVerification:
         # Should confirm withdrawal
         assert "stop" in response["message"].lower() or "decline" in response["message"].lower()
         
-        # Verify consent NOT granted
-        consent = db_session.query(PatientConsent).filter(
-            PatientConsent.phone_number == phone,
-            PatientConsent.consent_status == "granted"
+        # Verify consent NOT granted (using ConsentLog)
+        consent = db_session.query(ConsentLog).filter(
+            ConsentLog.phone == phone,
+            ConsentLog.consent_given == True
         ).first()
         assert consent is None, "Consent should not be granted after STOP!"
     
@@ -339,9 +340,9 @@ def generate_compliance_report(session):
     print("LEGAL COMPLIANCE VERIFICATION REPORT")
     print("="*80)
     
-    # Check consent enforcement
-    consents_granted = session.query(PatientConsent).filter(
-        PatientConsent.consent_status == "granted"
+    # Check consent enforcement (using ConsentLog)
+    consents_granted = session.query(ConsentLog).filter(
+        ConsentLog.consent_given == True
     ).count()
     print(f"\n✅ Consents Granted: {consents_granted}")
     

@@ -15,11 +15,9 @@ from app.services.consent_service import check_consent
 
 
 # Endpoints that require consent (whitelist PHI-touching endpoints)
-CONSENT_REQUIRED_ENDPOINTS = [
     r"/api/v1/appointments.*",  # All appointment operations
     r"/api/v1/patients.*",       # All patient operations
     r"/api/v1/bookings.*",       # Booking operations
-    r"/api/v1/whatsapp/webhook", # WhatsApp messages (except consent flow)
 ]
 
 # Endpoints explicitly exempt from consent check

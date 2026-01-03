@@ -24,7 +24,7 @@ def upgrade():
     
     op.create_table(
         'patient_deletion_log',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column('id', sa.String(36), primary_key=True),
         sa.Column('phone_number', sa.String(15), nullable=False),
         sa.Column('deletion_requested_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('deletion_completed_at', sa.DateTime(timezone=True), nullable=True),
@@ -41,14 +41,15 @@ def upgrade():
     op.create_index('idx_deletion_phone', 'patient_deletion_log', ['phone_number'])
     op.create_index('idx_deletion_status', 'patient_deletion_log', ['deletion_status'])
     
-    # Make immutable (append-only)
-    op.execute("""
-        CREATE RULE patient_deletion_log_no_update AS 
-        ON UPDATE TO patient_deletion_log DO INSTEAD NOTHING;
-        
-        CREATE RULE patient_deletion_log_no_delete AS 
-        ON DELETE TO patient_deletion_log DO INSTEAD NOTHING;
-    """)
+    # Make immutable (append-only) - PostgreSQL only
+    if op.get_bind().dialect.name == 'postgresql':
+        op.execute("""
+            CREATE RULE patient_deletion_log_no_update AS 
+            ON UPDATE TO patient_deletion_log DO INSTEAD NOTHING;
+            
+            CREATE RULE patient_deletion_log_no_delete AS 
+            ON DELETE TO patient_deletion_log DO INSTEAD NOTHING;
+        """)
 
 
 def downgrade():

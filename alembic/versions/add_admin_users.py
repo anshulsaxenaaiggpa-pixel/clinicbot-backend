@@ -19,24 +19,14 @@ depends_on = None
 def upgrade():
     """Create admin_users table with security features."""
     
-    # Create admin_role enum
-    admin_role_enum = postgresql.ENUM(
-        'super_admin',
-        'clinic_admin',
-        'support_viewer',
-        name='admin_role',
-        create_type=True
-    )
-    admin_role_enum.create(op.get_bind())
-    
     # Create admin_users table
     op.create_table(
         'admin_users',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column('id', sa.String(36), primary_key=True),
         sa.Column('email', sa.String(255), nullable=False, unique=True),
         sa.Column('password_hash', sa.String(255), nullable=False),
         sa.Column('full_name', sa.String(100), nullable=False),
-        sa.Column('role', admin_role_enum, nullable=False),
+        sa.Column('role', sa.String(20), nullable=False),
         sa.Column('mfa_secret', sa.String(32), nullable=True),
         sa.Column('mfa_enabled', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),

@@ -17,24 +17,33 @@ from datetime import datetime
 
 from app.models.patient import Patient
 from app.models.appointment import Appointment
-from app.models.patient_consent import PatientConsent, ConsentStatus
+from app.models.consent import ConsentLog
+from app.models.clinic import Clinic
 from app.models.patient_deletion import PatientDeletion
 from app.services.deletion_service import DeletionService
-from app.db.session import SessionLocal
 
 
-@pytest.fixture
-def db():
-    """Create test database session."""
-    db = SessionLocal()
-    yield db
-    db.close()
 
 
 @pytest.fixture
 def test_phone():
     """Test phone number."""
     return "+919988776655"
+
+
+@pytest.fixture
+def test_clinic(db):
+    """Create test clinic for ConsentLog FK."""
+    clinic = Clinic(
+        name="Test Clinic Deletion",
+        whatsapp_number="+919876543210",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(clinic)
+    db.commit()
+    db.refresh(clinic)
+    return clinic
 
 
 # =============================================================================
@@ -64,13 +73,13 @@ def test_deletion_keywords_detected():
 # TEST 2: Patient data deleted
 # =============================================================================
 
-def test_patient_data_deleted(db, test_phone):
+def test_patient_data_deleted(db, test_phone, test_clinic):
     """Test that patient record is deleted."""
     # Create patient
     patient = Patient(
         phone=test_phone,
         name="Test User",
-        clinic_id="test-clinic-id"
+        clinic_id=test_clinic.id
     )
     db.add(patient)
     db.commit()
@@ -93,13 +102,13 @@ def test_patient_data_deleted(db, test_phone):
 # TEST 3: Appointments anonymized (not deleted)
 # =============================================================================
 
-def test_appointments_anonymized(db, test_phone):
+def test_appointments_anonymized(db, test_phone, test_clinic):
     """Test that appointments are anonymized, not deleted."""
     # Create appointment
     appointment = Appointment(
-        clinic_id="test-clinic-id",
-        doctor_id="test-doctor-id",
-        service_id="test-service-id",
+        clinic_id=test_clinic.id,
+        doctor_id=test_clinic.id,  # Using clinic id as placeholder for doctor
+        service_id=test_clinic.id,  # Using clinic id as placeholder for service
         patient_phone=test_phone,
         patient_name="Test User",
         start_utc_ts=datetime.utcnow(),
@@ -129,26 +138,27 @@ def test_appointments_anonymized(db, test_phone):
 # TEST 4: Consents deleted
 # =============================================================================
 
-def test_consents_deleted(db, test_phone):
+def test_consents_deleted(db, test_phone, test_clinic):
     """Test that consent records are deleted."""
-    # Create consent
-    consent = PatientConsent(
-        phone_number=test_phone,
+    # Create consent using ConsentLog
+    consent = ConsentLog(
+        phone=test_phone,
+        clinic_id=test_clinic.id,
+        consent_given=True,
         consent_text="Test consent",
-        consent_version="v1.0",
-        consent_status=ConsentStatus.GRANTED
+        consent_version="v1.0"
     )
     db.add(consent)
     db.commit()
     
     # Verify consent exists
-    assert db.query(PatientConsent).filter_by(phone_number=test_phone).first() is not None
+    assert db.query(ConsentLog).filter_by(phone=test_phone).first() is not None
     
     # Request deletion
     result = DeletionService.anonymize_patient_data(test_phone, db=db)
     
     # Verify consent deleted
-    assert db.query(PatientConsent).filter_by(phone_number=test_phone).first() is None
+    assert db.query(ConsentLog).filter_by(phone=test_phone).first() is None
     assert result["records_deleted"]["consents"] == 1
 
 
@@ -156,13 +166,13 @@ def test_consents_deleted(db, test_phone):
 # TEST 5: Idempotent deletion (second delete does nothing)
 # =============================================================================
 
-def test_idempotent_deletion(db, test_phone):
+def test_idempotent_deletion(db, test_phone, test_clinic):
     """Test that deleting twice doesn't fail."""
     # Create patient
     patient = Patient(
         phone=test_phone,
         name="Test User",
-        clinic_id="test-clinic-id"
+        clinic_id=test_clinic.id
     )
     db.add(patient)
     db.commit()
@@ -180,13 +190,13 @@ def test_idempotent_deletion(db, test_phone):
 # TEST 6: Deletion log retained
 # =============================================================================
 
-def test_deletion_log_retained(db, test_phone):
+def test_deletion_log_retained(db, test_phone, test_clinic):
     """Test that deletion creates immutable audit log."""
     # Create and delete patient
     patient = Patient(
         phone=test_phone,
         name="Test User",
-        clinic_id="test-clinic-id"
+        clinic_id=test_clinic.id
     )
     db.add(patient)
     db.commit()
@@ -209,18 +219,18 @@ def test_deletion_log_retained(db, test_phone):
 # TEST 7: No PHI remains after deletion
 # =============================================================================
 
-def test_no_phi_remains(db, test_phone):
+def test_no_phi_remains(db, test_phone, test_clinic):
     """Test that no identifiable PHI remains after deletion."""
     # Create all records
     patient = Patient(
         phone=test_phone,
         name="Sensitive Name",
-        clinic_id="test-clinic-id"
+        clinic_id=test_clinic.id
     )
     db.add(patient)
     
     appointment = Appointment(
-        clinic_id="test-clinic-id",
+        clinic_id=test_clinic.id,
         doctor_id="test-doctor-id",
         service_id="test-service-id",
         patient_phone=test_phone,
@@ -231,11 +241,12 @@ def test_no_phi_remains(db, test_phone):
     )
     db.add(appointment)
     
-    consent = PatientConsent(
-        phone_number=test_phone,
+    consent = ConsentLog(
+        phone=test_phone,
+        clinic_id=test_clinic.id,
+        consent_given=True,
         consent_text="Test",
-        consent_version="v1.0",
-        consent_status=ConsentStatus.GRANTED
+        consent_version="v1.0"
     )
     db.add(consent)
     db.commit()
@@ -254,8 +265,8 @@ def test_no_phi_remains(db, test_phone):
     apt_match = db.query(Appointment).filter_by(patient_phone=test_phone).first()
     assert apt_match is None
     
-    # Check consents
-    consent_match = db.query(PatientConsent).filter_by(phone_number=test_phone).first()
+    # Check consents (using ConsentLog)
+    consent_match = db.query(ConsentLog).filter_by(phone=test_phone).first()
     assert consent_match is None
     
     # Deletion log should have it (for collision prevention)
@@ -267,14 +278,14 @@ def test_no_phi_remains(db, test_phone):
 # BONUS: Test deletion status check
 # =============================================================================
 
-def test_deletion_status_check(db, test_phone):
+def test_deletion_status_check(db, test_phone, test_clinic):
     """Test that deletion status can be queried."""
     # Before deletion
     status = DeletionService.get_deletion_status(test_phone, db)
     assert status is None
     
     # Create and delete
-    patient = Patient(phone=test_phone, name="Test", clinic_id="test-clinic-id")
+    patient = Patient(phone=test_phone, name="Test", clinic_id=test_clinic.id)
     db.add(patient)
     db.commit()
     

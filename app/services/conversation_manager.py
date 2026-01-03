@@ -223,7 +223,14 @@ Please reply with the number (1, 2, etc.).""",
                 
                 doctor_id = selected_doctor["id"]
                 
-                services = await self._fetch_services(clinic_id)
+                # Fetch doctor-specific services instead of all clinic services
+                services = await self._fetch_services_for_doctor(doctor_id)
+                
+                if not services:
+                    # Fallback: if no doctor-specific services, show all clinic services
+                    logger.warning(f"No doctor-specific services found for doctor {doctor_id}, falling back to clinic services")
+                    services = await self._fetch_services(clinic_id)
+                
                 service_list = "\n".join([f"{i+1}. {svc['name']} (₹{svc['default_fee']})" 
                                          for i, svc in enumerate(services)])
                 
@@ -254,27 +261,74 @@ Reply with the number.""",
                         "session_update": {}
                     }
                 
+                # Generate next 7 days with numbered options
+                from datetime import timedelta
+                available_dates = []
+                date_display_list = []
+                
+                for i in range(7):
+                    future_date = date.today() + timedelta(days=i)
+                    available_dates.append(future_date)
+                    
+                    # Format display name
+                    if i == 0:
+                        display = f"{i+1}. Today ({future_date.strftime('%d %b')})"
+                    elif i == 1:
+                        display = f"{i+1}. Tomorrow ({future_date.strftime('%d %b')})"
+                    else:
+                        display = f"{i+1}. {future_date.strftime('%a, %d %b')}"
+                    
+                    date_display_list.append(display)
+                
+                date_list = "\n".join(date_display_list)
+                
                 return {
-                    "message": """When would you like to book?
+                    "message": f"""When would you like to book?
 
-Reply with:
-• Today
-• Tomorrow
-• Date (e.g., Dec 15 or 15-12-2025)""",
+{date_list}
+
+Reply with the number (1-7).""",
                     "session_update": {
                         "context": {
                             "booking_state": "awaiting_date",
                             "selected_service_id": selected_service["id"],
                             "selected_service_name": selected_service["name"],
-                            "selected_service_fee": selected_service["default_fee"]
+                            "selected_service_fee": selected_service["default_fee"],
+                            "available_dates": [str(d) for d in available_dates]  # Store as strings for JSON serialization
                         }
                     }
                 }
             
             elif conversation_state == "awaiting_date":
                 # Date selected, show available slots
-                # CRITICAL FIX: Parse from message_text, not from entities (which is empty in booking flow)
-                target_date = self._parse_date(message_text)
+                # Parse numeric selection from numbered date list (1-7)
+                available_dates = session["context"].get("available_dates", [])
+                target_date = None
+                
+                try:
+                    # Try numeric selection first
+                    date_index = int(message_text.strip()) - 1
+                    if 0 <= date_index < len(available_dates):
+                        # Convert string back to date object
+                        from datetime import datetime
+                        target_date = datetime.strptime(available_dates[date_index], "%Y-%m-%d").date()
+                        logger.info(f"📅 User selected date #{date_index + 1}: {target_date}")
+                    else:
+                        return {
+                            "message": f"Invalid selection. Please reply with a number from 1 to {len(available_dates)}.",
+                            "session_update": {}
+                        }
+                except ValueError:
+                    # Fallback: try text parsing for "today", "tomorrow", etc.
+                    logger.info(f"📅 Numeric parse failed, trying text parsing for: '{message_text}'")
+                    target_date = self._parse_date(message_text)
+                
+                if not target_date:
+                    return {
+                        "message": "Invalid date. Please reply with a number from the list (1-7).",
+                        "session_update": {}
+                    }
+                
                 doctor_id = session["context"]["selected_doctor_id"]
                 
                 logger.info(f"📅 User said: '{message_text}' → Parsed as: {target_date}")
@@ -726,6 +780,49 @@ Reply NUMBER ONLY:
         finally:
             db.close()
     
+    async def _fetch_services_for_doctor(self, doctor_id: str) -> List[Dict]:
+        """Fetch services available for a specific doctor via many-to-many relationship"""
+        from app.db.database import SessionLocal
+        from app.models.service import Service, doctor_services
+        from sqlalchemy import select
+        
+        db = SessionLocal()
+        try:
+            # Query services linked to this doctor via doctor_services junction table
+            stmt = select(Service).join(
+                doctor_services, 
+                doctor_services.c.service_id == Service.id
+            ).where(
+                doctor_services.c.doctor_id == doctor_id,
+                Service.is_active == True
+            ).order_by(Service.name)
+            
+            services = db.execute(stmt).scalars().all()
+            
+            # Get custom fees from junction table if set
+            result = []
+            for svc in services:
+                # Check if doctor has custom fee for this service
+                custom_fee_stmt = select(doctor_services.c.custom_fee).where(
+                    doctor_services.c.doctor_id == doctor_id,
+                    doctor_services.c.service_id == str(svc.id)
+                )
+                custom_fee = db.execute(custom_fee_stmt).scalar()
+                
+                result.append({
+                    "id": str(svc.id),
+                    "name": svc.name,
+                    "default_fee": custom_fee or svc.default_fee or 0
+                })
+            
+            logger.info(f"Found {len(result)} services for doctor {doctor_id}")
+            return result
+        except Exception as e:
+            logger.error(f"Error fetching doctor services: {e}")
+            return []
+        finally:
+            db.close()
+    
     async def _fetch_slots(self, clinic_id: str, doctor_id: str, date: date) -> List[Dict]:
         """Fetch available slots - simple hardcoded for now"""
         # Return demo slots for MVP
@@ -783,16 +880,31 @@ Reply NUMBER ONLY:
     async def _create_booking(self, **kwargs) -> Dict:
         """Create appointment via API"""
         async with httpx.AsyncClient() as client:
+            # Convert ISO datetime string to Unix timestamp (integer)
+            slot_timestamp_str = kwargs["slot"]["start_utc_ts"]  # "2026-01-04T11:00:00"
+            
+            try:
+                # Parse ISO string to datetime object, then to Unix timestamp
+                from datetime import datetime
+                dt = datetime.fromisoformat(slot_timestamp_str)
+                unix_timestamp = int(dt.timestamp())
+                logger.info(f"Converted slot timestamp: {slot_timestamp_str} → {unix_timestamp}")
+            except Exception as e:
+                logger.error(f"Failed to parse timestamp {slot_timestamp_str}: {e}")
+                return {"success": False, "error": f"Invalid timestamp format: {e}"}
+            
             payload = {
                 "clinic_id": str(kwargs["clinic_id"]),
                 "doctor_id": str(kwargs["doctor_id"]),
                 "service_id": str(kwargs["service_id"]),
-                "patient_id": kwargs.get("patient_id"),  # Now included
+                "patient_id": kwargs.get("patient_id"),
                 "patient_name": kwargs.get("patient_name", "Patient"),
                 "patient_phone": kwargs["patient_phone"],
-                "date": kwargs.get("target_date"),
-                "start_utc_ts": kwargs["slot"]["start_utc_ts"]
+                "date": kwargs.get("target_date"),  # Required by API schema (YYYY-MM-DD)
+                "start_utc_ts": unix_timestamp  # Unix timestamp integer
             }
+            
+            logger.info(f"Creating booking with payload: {payload}")
             
             try:
                 response = await client.post(
@@ -809,8 +921,10 @@ Reply NUMBER ONLY:
                         "fee": 500
                     }
                 else:
+                    logger.error(f"Booking API error: {response.status_code} - {response.text}")
                     return {"success": False, "error": response.text}
             except Exception as e:
+                logger.error(f"Booking request failed: {type(e).__name__}: {str(e)}")
                 return {"success": False, "error": str(e)}
     
     def _parse_date(self, date_str: Optional[str]) -> date:

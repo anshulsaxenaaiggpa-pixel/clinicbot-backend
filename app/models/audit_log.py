@@ -1,59 +1,28 @@
-"""
-Audit Log Model - MODULE 4
-
-Immutable event logging for compliance and debugging.
-Tracks all system actions for auditability.
-"""
-from sqlalchemy import Column, String, DateTime, Index, Integer
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, DateTime, ForeignKey, Index
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from datetime import datetime
 import uuid
-import hashlib
-
 from app.db.base_class import Base
 
-
 class AuditLog(Base):
-    """
-    Immutable audit trail for all system actions.
-    
-    Cannot be updated or deleted once written.
-    Retention: 5 years minimum for compliance.
-    """
     __tablename__ = "audit_log"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
-    # Event identification
-    event_id = Column(String(100), nullable=False)  # Unique event identifier
-    event_type = Column(String(50), nullable=False)  # Type of event
-    
-    # Actor (who performed the action)
-    actor = Column(String(20), nullable=False)  # system/clinic/admin/patient
-    actor_id = Column(String(100), nullable=False)  # ID or phone (hashed if needed)
-    
-    # Patient identification (hashed for privacy)
-    patient_phone_hash = Column(String(64), nullable=True)  # SHA256 hash
-    
-    # Event details
-    event_metadata = Column(JSONB, nullable=True)  # Additional context (NO PHI)
-    
-    # Timestamps
-    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
-    
-    # Indexes for queries
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=False)
+    actor_type = Column(String(20), nullable=False)  # PATIENT/STAFF/SYSTEM
+    actor_reference = Column(String(100), nullable=False)  # phone/staff_id
+    action = Column(String(50), nullable=False)  # CONSENT_GIVEN/BOOK_APPOINTMENT
+    entity_type = Column(String(50), nullable=False)  # CONSENT/APPOINTMENT
+    entity_id = Column(String(36), nullable=True)
+    old_state = Column(sa.JSON().with_variant(postgresql.JSONB, "postgresql"), nullable=True)
+    new_state = Column(sa.JSON().with_variant(postgresql.JSONB, "postgresql"), nullable=True)
+    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow)
+    ip_address = Column(String(50), nullable=True)
+
+    # Indexes for query performance
     __table_args__ = (
-        Index("idx_audit_event_type", "event_type"),
-        Index("idx_audit_actor", "actor", "actor_id"),
-        Index("idx_audit_timestamp", "timestamp"),
-        Index("idx_audit_patient_hash", "patient_phone_hash"),
-        # Immutability enforced via migration rules
+        Index('idx_audit_clinic_timestamp', 'clinic_id', 'timestamp'),
+        Index('idx_audit_action', 'action'),
+        Index('idx_audit_entity', 'entity_type', 'entity_id'),
     )
-    
-    @staticmethod
-    def hash_phone(phone: str) -> str:
-        """Hash phone number for privacy-preserving audit logs."""
-        return hashlib.sha256(phone.encode()).hexdigest()
-    
-    def __repr__(self):
-        return f"<AuditLog {self.event_type} by {self.actor} at {self.timestamp}>"

@@ -1,0 +1,15 @@
+Audit Log Immutable Compliance: COMPLETE ✅
+
+✅ Model: app/models/audit_log.py (DPDP/ GDPR compliant)
+✅ Service: app/services/audit_logger.py (Atomic async logging)
+✅ Integration: consent_handler.py (CONSENT_GIVEN/DECLINED)
+✅ Integration: conversation_manager.py (BOOK_APPOINTMENT with metadata)
+✅ Migration: add_audit_log (Standardized schema applied)
+✅ Immutability: PostgreSQL Rules configured (UPDATE/DELETE prevention)
+✅ SQLite: Path verified locally for dev/test
+
+Details:
+- Schema: id, clinic_id, actor_type, actor_ref, action, entity_type, entity_id, old_state, new_state, timestamp, ip_address
+- Flow 1: Consent capture logs actor + status
+- Flow 2: Booking capture logs doctor + time + patient_name
+- Compliance: Audit trail is append-only in production

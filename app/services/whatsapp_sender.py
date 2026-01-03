@@ -28,6 +28,14 @@ class WhatsAppSender:
         # Meta Cloud API setup
         self.meta_token = settings.META_WHATSAPP_TOKEN
         self.meta_phone_id = settings.META_PHONE_NUMBER_ID
+        
+        # Gupshup setup (India optimized, ₹0.30/msg, no daily limits)
+        self.gupshup_api_key = settings.GUPSHUP_API_KEY
+        self.gupshup_app_name = settings.GUPSHUP_APP_NAME
+        self.gupshup_source = settings.GUPSHUP_SOURCE_NUMBER
+        
+        # Default provider from config
+        self.default_provider = settings.WHATSAPP_PROVIDER
     
     async def send_message(
         self,
@@ -49,9 +57,15 @@ class WhatsAppSender:
             True if successful
         """
         try:
+            # Use default provider if not specified or use from message data
+            if provider == "twilio":
+                provider = self.default_provider
+            
             logger.info(f"📤 Attempting to send WhatsApp message via {provider} to {to}")
             
-            if provider == "twilio" and self.twilio_client:
+            if provider == "gupshup" and self.gupshup_api_key:
+                return await self._send_gupshup(to, message, buttons)
+            elif provider == "twilio" and self.twilio_client:
                 return await self._send_twilio(to, message, buttons)
             elif provider == "twilio" and not self.twilio_client:
                 logger.error("❌ Twilio provider requested but Twilio client not initialized")
@@ -161,4 +175,48 @@ class WhatsAppSender:
             
         except Exception as e:
             logger.error(f"Meta send error: {str(e)}")
+            return False
+    
+    async def _send_gupshup(self, to: str, message: str, buttons: Optional[List[str]]) -> bool:
+        """Send via Gupshup WhatsApp API (India optimized, ₹0.30/msg)"""
+        try:
+            url = "https://api.gupshup.io/wa/api/v1/msg"
+            
+            # Sanitize phone number
+            to = to.strip().replace(" ", "")
+            if to.startswith("+"):
+                to = to[1:]  # Gupshup uses number without +
+            
+            # Add button options to message text (Gupshup template approach)
+            if buttons:
+                message += "\n\n" + "\n".join([f"{i+1}. {btn}" for i, btn in enumerate(buttons)])
+            
+            # Gupshup API payload (simple text message)
+            payload = {
+                "channel": "whatsapp",
+                "source": self.gupshup_source.replace("+", "") if self.gupshup_source else "",
+                "destination": to,
+                "message": message,
+                "src.name": self.gupshup_app_name or "ClinicBot"
+            }
+            
+            headers = {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "apikey": self.gupshup_api_key
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, data=payload, headers=headers)
+                response.raise_for_status()
+                result = response.json()
+                
+                if result.get("status") == "submitted":
+                    logger.info(f"✅ Sent Gupshup message to {to}")
+                    return True
+                else:
+                    logger.error(f"❌ Gupshup API error: {result}")
+                    return False
+            
+        except Exception as e:
+            logger.error(f"❌ Gupshup send error: {type(e).__name__}: {str(e)[:200]}")
             return False

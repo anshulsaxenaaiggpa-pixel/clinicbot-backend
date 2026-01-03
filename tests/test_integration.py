@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from app.models.patient import Patient
 from app.models.appointment import Appointment
-from app.models.patient_consent import PatientConsent
+from app.models.consent import ConsentLog
 from app.models.audit_log import AuditLog
 from app.services.booking_service import BookingService
 from app.services.deletion_service import DeletionService
@@ -89,11 +89,11 @@ def test_consent_then_deletion_workflow(test_phone, db_session):
     ).first()
     assert patient_after is None or patient_after.is_deleted == True
     
-    # Verify consent deleted
-    consent_after = db_session.query(PatientConsent).filter(
-        PatientConsent.phone_number == test_phone
+    # Verify consent deleted (using ConsentLog)
+    consent_after = db_session.query(ConsentLog).filter(
+        ConsentLog.phone == test_phone
     ).first()
-    assert consent_after is None or consent_after.consent_status == "withdrawn"
+    assert consent_after is None
     
     # Verify appointment anonymized
     appointment_after = db_session.query(Appointment).filter(
@@ -166,13 +166,13 @@ def test_consent_withdrawal_stops_processing_e2e(test_phone, db_session):
     # Should stop
     assert "decline" in response["message"].lower() or "no data" in response["message"].lower()
     
-    # Verify no data stored
+    # Verify no data stored (using ConsentLog)
     patient = db_session.query(Patient).filter(
-        Patient.phone_number == test_phone
+        Patient.phone == test_phone
     ).first()
-    consent = db_session.query(PatientConsent).filter(
-        PatientConsent.phone_number == test_phone,
-        PatientConsent.consent_status == "granted"
+    consent = db_session.query(ConsentLog).filter(
+        ConsentLog.phone == test_phone,
+        ConsentLog.consent_given == True
     ).first()
     
     assert consent is None  # No granted consent

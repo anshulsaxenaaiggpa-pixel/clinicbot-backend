@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     META_PHONE_NUMBER_ID: Optional[str] = None
     META_VERIFY_TOKEN: Optional[str] = None
     
+    # WhatsApp (Gupshup - India optimized, ₹0.30/msg)
+    GUPSHUP_API_KEY: Optional[str] = None
+    GUPSHUP_APP_NAME: Optional[str] = None
+    GUPSHUP_SOURCE_NUMBER: Optional[str] = None  # Your WhatsApp Business number
+    WHATSAPP_PROVIDER: str = "twilio"  # twilio, meta, or gupshup
+    
     # Payment
     RAZORPAY_KEY_ID: Optional[str] = None
     RAZORPAY_KEY_SECRET: Optional[str] = None

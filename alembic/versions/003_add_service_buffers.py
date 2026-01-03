@@ -17,25 +17,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add buffer columns with server defaults for existing rows
-    op.add_column(
-        "services",
-        sa.Column(
-            "before_buffer_mins",
-            sa.Integer(),
-            server_default="0",
-            nullable=False,
-        ),
-    )
-    op.add_column(
-        "services",
-        sa.Column(
-            "after_buffer_mins",
-            sa.Integer(),
-            server_default="0",
-            nullable=False,
-        ),
-    )
+    # Buffer columns already created in 002_add_whatsapp_config.py
+    pass
 
 
 def downgrade() -> None:

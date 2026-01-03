@@ -11,8 +11,7 @@ def get_or_create_patient(
     db: Session,
     clinic_id: UUID,
     phone: str,
-    name: Optional[str] = None,
-    whatsapp_name: Optional[str] = None
+    name: Optional[str] = None
 ) -> Patient:
     """
     Get existing patient or create new one
@@ -25,7 +24,6 @@ def get_or_create_patient(
         clinic_id: Clinic UUID
         phone: Phone number (with country code)
         name: Patient name (if provided in message)
-        whatsapp_name: Name from WhatsApp profile
         
     Returns:
         Patient object (existing or newly created)
@@ -37,9 +35,9 @@ def get_or_create_patient(
     ).first()
     
     if patient:
-        # Update WhatsApp name if changed
-        if whatsapp_name and patient.whatsapp_name != whatsapp_name:
-            patient.whatsapp_name = whatsapp_name
+        # Update name if changed and provided
+        if name and patient.name != name:
+            patient.name = name
             db.commit()
             db.refresh(patient)
         return patient
@@ -48,8 +46,7 @@ def get_or_create_patient(
     patient = Patient(
         clinic_id=clinic_id,
         phone=phone,
-        name=name or whatsapp_name or f"Patient {phone[-4:]}",  # Default name
-        whatsapp_name=whatsapp_name
+        name=name or f"Patient {phone[-4:]}"  # Default name
     )
     
     db.add(patient)

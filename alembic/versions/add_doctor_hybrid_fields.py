@@ -16,16 +16,8 @@ depends_on = None
 
 
 def upgrade():
-    """Add hybrid booking fields to existing doctors table."""
-    
-    # Add new columns
-    op.add_column('doctors', sa.Column('whatsapp_number', sa.String(20), nullable=True, unique=True))
-    op.add_column('doctors', sa.Column('city', sa.String(100), nullable=True))
-    op.add_column('doctors', sa.Column('is_searchable', sa.Boolean(), nullable=False, server_default='false'))
-    
-    # Add indexes for hybrid booking
-    op.create_index('idx_doctor_whatsapp_hybrid', 'doctors', ['whatsapp_number'])
-    op.create_index('idx_doctor_city_search', 'doctors', ['is_searchable', 'city'])
+    """Add hybrid booking fields already handled in add_doctors."""
+    pass
 
 
 def downgrade():

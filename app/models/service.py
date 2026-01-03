@@ -12,8 +12,8 @@ from app.db.base_class import Base
 doctor_services = Table(
     "doctor_services",
     Base.metadata,
-    Column("doctor_id", UUID(as_uuid=True), ForeignKey("doctors.id"), primary_key=True),
-    Column("service_id", UUID(as_uuid=True), ForeignKey("services.id"), primary_key=True),
+    Column("doctor_id", String(36), ForeignKey("doctors.id"), primary_key=True),
+    Column("service_id", String(36), ForeignKey("services.id"), primary_key=True),
     Column("custom_fee", Integer, nullable=True)  # Override default service fee for specific doctor
 )
 
@@ -22,8 +22,8 @@ class Service(Base):
     """Service/Treatment offered by clinic"""
     __tablename__ = "services"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    clinic_id = Column(UUID(as_uuid=True), ForeignKey("clinics.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=False)
     
     name = Column(String(100), nullable=False)
     type = Column(String(20))  # consultation, procedure, therapy, followup, teleconsult

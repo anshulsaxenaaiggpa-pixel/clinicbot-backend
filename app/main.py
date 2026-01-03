@@ -2,8 +2,12 @@
 # CRITICAL: Import registry bootstrap FIRST to ensure all models are registered
 import app.db.base  # noqa - Must be first to register SQLAlchemy models
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+import traceback
 from app.config import settings
 
 # MANDATORY: Import startup validator for security checks
@@ -42,16 +46,62 @@ async def run_config_validation():
     print("=" * 80)
     print("✅ SECURITY VALIDATION PASSED - Application starting")
     print("=" * 80 + "\n")
+    
+    # ENSURE CONSENT_LOG TABLE EXISTS (critical for WhatsApp flow)
+    print("🗄️ Ensuring consent_log table exists...")
+    try:
+        from app.db.database import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS consent_log (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    phone VARCHAR(15) NOT NULL,
+                    clinic_id UUID NOT NULL,
+                    consent_given BOOLEAN NOT NULL,
+                    consent_source VARCHAR(20) NOT NULL,
+                    consent_version VARCHAR(20) NOT NULL,
+                    consent_text TEXT NOT NULL,
+                    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    ip_address VARCHAR(50)
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_consent_log_phone ON consent_log (phone)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_consent_clinic_phone ON consent_log (clinic_id, phone)"))
+            
+            # ENSURE AUDIT_LOG TABLE EXISTS (critical for compliance)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS audit_log (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    event_id VARCHAR(100) NOT NULL,
+                    event_type VARCHAR(50) NOT NULL,
+                    actor VARCHAR(50) NOT NULL,
+                    actor_id VARCHAR(100),
+                    patient_phone_hash VARCHAR(100),
+                    event_metadata TEXT,
+                    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_log_event_type ON audit_log (event_type)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_log_timestamp ON audit_log (timestamp)"))
+            
+            conn.commit()
+        print("✅ consent_log and audit_log tables ready!")
+    except Exception as e:
+        print(f"⚠️ Table creation warning: {e}")
 
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.DEBUG else ["https://curaslot.app"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Session Middleware (Required for Admin UI flash messages)
+app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET_KEY)
 
 
 @app.get("/")
@@ -172,13 +222,56 @@ async def initialize_database():
 
 
 # Include API routers
-from app.api.v1 import clinics, doctors, services, appointments, slots, summary, auth, webhooks, patients, debug
+from app.api.v1 import clinics, doctors, services, appointments, slots, summary, auth, webhooks, patients, debug, legal, doctor_registration
 from app.api import onboarding
+# Defensive Admin UI Loading
+admin_import_error = None
+admin_loaded = False
+try:
+    from app.api.admin import doctors as admin_doctors, tools as admin_tools, audit as admin_audit, auth as admin_auth
+    admin_loaded = True
+except Exception as e:
+    print(f"❌ Admin UI Import Failed: {e}")
+    traceback.print_exc()
+    admin_import_error = str(e)
+
+# Admin UI routes (requires SESSION_SECRET_KEY and ADMIN_UI_ENABLED=True)
+if settings.ADMIN_UI_ENABLED:
+    if admin_loaded:
+        app.include_router(admin_auth.router, tags=["admin-auth"])
+        app.include_router(admin_doctors.router, tags=["admin-doctors"])
+        app.include_router(admin_tools.router, tags=["admin-tools"])
+        app.include_router(admin_audit.router, tags=["admin-audit"])
+    else:
+        # Fallback for Import Errors - Prevents startup crash
+        print("⚠️ Admin UI disabled due to import error - activating fallback debugger")
+        templates = Jinja2Templates(directory="app/templates")
+        
+        @app.get("/admin/{path:path}")
+        async def admin_fallback(request: Request, path: str):
+            error_html = f"""
+            <html>
+                <body style="font-family: sans-serif; padding: 2rem;">
+                    <h1 style="color: red;">⚠️ Admin UI Error</h1>
+                    <p>The admin dashboard could not be loaded due to a server configuration issue.</p>
+                    <div style="background: #eee; padding: 1rem; border-radius: 5px; overflow: auto; margin: 1rem 0;">
+                        <strong>Backend Error:</strong>
+                        <pre>{admin_import_error}</pre>
+                    </div>
+                    <p>Please contact support or check server logs.</p>
+                    <a href="/">Return to Home</a>
+                </body>
+            </html>
+            """
+            return HTMLResponse(content=error_html, status_code=500)
+
+app.include_router(doctor_registration.router, prefix="/api/v1/registration", tags=["registration"])
 
 app.include_router(debug.router, prefix="/api/v1/debug", tags=["debug"])
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=[" auth"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
 app.include_router(onboarding.router, prefix="/api/v1/onboarding", tags=["onboarding"])
+app.include_router(legal.router, prefix="/legal", tags=["legal"])  # Public legal endpoints
 app.include_router(clinics.router, prefix="/api/v1/clinics", tags=["clinics"])
 app.include_router(doctors.router, prefix="/api/v1/doctors", tags=["doctors"])
 app.include_router(services.router, prefix="/api/v1/services", tags=["services"])

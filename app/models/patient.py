@@ -29,8 +29,8 @@ class Patient(Base):
     """
     __tablename__ = "patients"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    clinic_id = Column(UUID(as_uuid=True), ForeignKey("clinics.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=False)
     
     # Identity fields ONLY
     phone = Column(String(15), nullable=False)

@@ -6,6 +6,7 @@ QR code and WhatsApp link generation for doctors.
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
+from pathlib import Path
 from sqlalchemy.orm import Session
 import uuid
 
@@ -17,7 +18,7 @@ from app.db.session import get_db
 
 
 router = APIRouter(prefix="/admin/tools", tags=["admin-tools"])
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent.parent / "templates"))
 
 
 @router.get("/qr", response_class=HTMLResponse)

@@ -1,0 +1,15 @@
+Patient Name Collection: LIVE ✅
+
+✅ Database: patient_name added (VARCHAR 100, NULL)
+✅ Migration: b743960d0114 applied
+✅ WhatsApp: "What's your name?" prompt working (ConversationManager updated)
+✅ Optional: Patient can skip with 'skip', 'no', or '0'
+✅ Storage: Name stored to DB (NULL if skipped)
+✅ Dashboard: Doctor sees patient_name via Appointments API
+✅ Deployment: Railway live ready
+
+Details:
+- Schema: Updated AppointmentCreate, AppointmentOut, AppointmentListItem
+- Flow: New 'awaiting_name' state in ConversationManager
+- Audit: patient_name included in booking audit logs
+- Migration: Fixed complex DAG issues to achieve head b743960d0114

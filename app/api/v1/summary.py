@@ -176,3 +176,51 @@ def get_dashboard_stats(
         current_occupancy=0.0,  # TODO
         top_services=[]  # TODO
     )
+
+
+@router.get("/stats/{doctor_id}")
+def get_doctor_stats(
+    doctor_id: str,
+    period: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    db: Session = Depends(get_db)
+):
+    """Get professional analytics for doctor retention (Daily/Weekly/Monthly)"""
+    from sqlalchemy import case, extract
+    
+    today = date.today()
+    
+    if period == "daily":
+        filter_condition = Appointment.date == today
+    elif period == "weekly":
+        week_start = today - timedelta(days=today.weekday())
+        filter_condition = Appointment.date >= week_start
+    else:  # monthly
+        month_start = today.replace(day=1)
+        filter_condition = Appointment.date >= month_start
+    
+    # Aggregate stats
+    stats = db.query(
+        func.count(Appointment.id).label("total"),
+        func.count(case((Appointment.status == "completed", 1))).label("consulted"),
+        func.count(case((Appointment.status == "no_show", 1))).label("no_shows"),
+        func.sum(Appointment.amount_paid).label("revenue")
+    ).filter(
+        Appointment.doctor_id == doctor_id,
+        filter_condition
+    ).first()
+    
+    total = stats.total or 0
+    consulted = stats.consulted or 0
+    no_shows = stats.no_shows or 0
+    revenue = stats.revenue or 0
+    
+    return {
+        "period": period,
+        "total_patients": total,
+        "consulted": consulted,
+        "no_shows": no_shows,
+        "no_show_rate": f"{(no_shows/total*100):.1f}%" if total > 0 else "0%",
+        "success_rate": f"{(consulted/total*100):.1f}%" if total > 0 else "0%",
+        "revenue": revenue,
+        "avg_revenue": f"₹{revenue/total:.0f}" if total > 0 else "₹0"
+    }

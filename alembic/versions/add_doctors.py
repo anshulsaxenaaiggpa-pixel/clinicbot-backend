@@ -18,11 +18,14 @@ depends_on = None
 
 
 def upgrade():
-    """Create doctors table."""
+    """Create or update doctors table."""
+    
+    # Drop existing doctors table from Branch A (002) if it exists
+    op.execute("DROP TABLE IF EXISTS doctors")
     
     op.create_table(
         'doctors',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column('id', sa.String(36), primary_key=True),
         sa.Column('full_name', sa.String(100), nullable=False),
         sa.Column('specialty', sa.String(100), nullable=True),
         sa.Column('whatsapp_number', sa.String(20), nullable=False, unique=True),

@@ -4,7 +4,7 @@ Patient Deletion Model - MODULE 3
 Immutable log of data deletion requests and execution.
 Prevents ghost recreation collisions and provides audit trail.
 """
-from sqlalchemy import Column, String, DateTime, Index
+from sqlalchemy import Column, String, DateTime, Index, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid
@@ -21,7 +21,7 @@ class PatientDeletion(Base):
     """
     __tablename__ = "patient_deletion_log"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     
     # Identity (stored for collision prevention only)
     phone_number = Column(String(15), nullable=False)

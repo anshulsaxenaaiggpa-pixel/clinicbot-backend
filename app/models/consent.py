@@ -8,9 +8,9 @@ from app.db.base_class import Base
 class ConsentLog(Base):
     __tablename__ = "consent_log"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     phone = Column(String(15), nullable=False, index=True)
-    clinic_id = Column(UUID(as_uuid=True), ForeignKey("clinics.id"), nullable=False)
+    clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=False)
     consent_given = Column(Boolean, nullable=False)
     consent_source = Column(String(20), default="whatsapp", nullable=False)
     consent_version = Column(String(20), default="v1.0", nullable=False)

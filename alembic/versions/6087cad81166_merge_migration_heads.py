@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '6087cad81166'
-down_revision = ('003', 'add_doctor_hybrid_fields', 'add_doctors')
+down_revision = ('add_doctor_hybrid_fields', 'add_doctors')
 branch_labels = None
 depends_on = None
 

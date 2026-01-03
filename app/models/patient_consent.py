@@ -33,7 +33,7 @@ CONSENT_TEXT_V1 = """We will use your messages only to book and manage your clin
 CONSENT_VERSION = "dpdp-whatsapp-consent-v1.0"
 
 
-class PatientConsent(Base):
+class PatientConsent(Base):\n    \"\"\"\n    DEPRECATED: Use ConsentLog (app.models.consent) instead.\n    \n    This model is retained for backward compatibility but should not be used\n    for new consent records. Migration scripts should be updated to use\n    the 'consent_log' table via ConsentLog model.\n    \"\"\"
     """
     Patient consent records for DPDP compliance.
     
@@ -43,7 +43,7 @@ class PatientConsent(Base):
     __tablename__ = "patient_consent"
     
     # Primary key
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     
     # Identity (E.164 format)
     phone_number = Column(String(15), nullable=False)

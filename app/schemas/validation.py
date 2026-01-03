@@ -13,6 +13,15 @@ import re
 E164_PATTERN = re.compile(r'^\+[1-9]\d{1,14}$')
 
 
+class E164PhoneValidator:
+    """Helper class for validating phone numbers."""
+    
+    @staticmethod
+    def validate(v: str) -> bool:
+        """Validate E.164 format."""
+        return bool(E164_PATTERN.match(v))
+
+
 class PhoneNumber(BaseModel):
     """E.164 phone number validation."""
     phone: str = Field(..., description="Phone number in E.164 format")
@@ -31,7 +40,7 @@ class ConsentCaptureInput(BaseModel):
     """Input validation for consent capture."""
     phone_number: str = Field(..., min_length=10, max_length=15)
     reply_text: str = Field(..., min_length=1, max_length=100)
-    channel: str = Field(default="whatsapp", regex="^(whatsapp|sms|api)$")
+    channel: str = Field(default="whatsapp", pattern="^(whatsapp|sms|api)$")
     ip_address: Optional[str] = Field(None, max_length=45)  # IPv6 max length
     
     @validator('phone_number')
@@ -45,7 +54,7 @@ class DeletionInput(BaseModel):
     """Input validation for data deletion."""
     phone_number: str
     verification: str = Field(default="phone_match")
-    requested_by: str = Field(default="patient", regex="^(patient|admin|system)$")
+    requested_by: str = Field(default="patient", pattern="^(patient|admin|system)$")
     
     @validator('phone_number')
     def validate_phone(cls, v):
@@ -63,7 +72,7 @@ class AppointmentCreateInput(BaseModel):
     service_id: str
     start_time: datetime
     end_time: datetime
-    source: str = Field(default="whatsapp", regex="^(whatsapp|dashboard|api)$")
+    source: str = Field(default="whatsapp", pattern="^(whatsapp|dashboard|api)$")
     
     @validator('patient_phone')
     def validate_phone(cls, v):
@@ -86,7 +95,7 @@ class AppointmentCreateInput(BaseModel):
 
 class AppointmentUpdateInput(BaseModel):
     """Input validation for appointment updates."""
-    status: Optional[str] = Field(None, regex="^(booked|cancelled|no_show|completed)$")
+    status: Optional[str] = Field(None, pattern="^(booked|cancelled|no_show|completed)$")
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     cancellation_reason: Optional[str] = Field(None, max_length=500)

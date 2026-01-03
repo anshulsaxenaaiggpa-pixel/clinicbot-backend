@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     
     # Admin UI Security (CRITICAL - DO NOT HARD-CODE)
     SESSION_SECRET_KEY: str  # Required: >=32 chars, for session cookie signing
-    ADMIN_UI_ENABLED: bool = False  # Feature flag - must be explicitly enabled
+    ADMIN_UI_ENABLED: bool = True  # Feature flag - enabled for dashboard access
     ADMIN_UI_HTTPS_ONLY: bool = True  # Force HTTPS-only cookies (False only for local dev)
     PASSWORD_HASH_ROUNDS: int = 12  # Bcrypt cost factor (10-14 recommended)
     

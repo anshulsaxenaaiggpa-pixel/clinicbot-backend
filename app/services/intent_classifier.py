@@ -77,7 +77,7 @@ Respond ONLY with valid JSON:
         if context and "booking_state" in context:
             booking_state = context.get("booking_state")
             # Valid mid-flow states where user is responding to prompts
-            if booking_state in ["awaiting_doctor", "awaiting_service", "awaiting_date", "awaiting_slot"]:
+            if booking_state in ["awaiting_doctor", "awaiting_service", "awaiting_date", "awaiting_slot", "awaiting_name"]:
                 logger.info(f"🔄 User in booking flow (state={booking_state}), preserving 'book_appointment' intent")
                 return {
                     "intent": "book_appointment",

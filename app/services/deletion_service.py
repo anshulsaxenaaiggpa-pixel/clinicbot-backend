@@ -16,7 +16,7 @@ import hashlib
 
 from app.models.patient import Patient
 from app.models.appointment import Appointment
-from app.models.patient_consent import PatientConsent
+from app.models.consent import ConsentLog
 from app.models.patient_deletion import PatientDeletion
 from app.db.session import SessionLocal
 
@@ -146,9 +146,9 @@ class DeletionService:
                 apt.patient_name = anon_name
                 appointment_count += 1
             
-            # Delete consent records
-            consents = db.query(PatientConsent).filter(
-                PatientConsent.phone_number == phone_number
+            # Delete consent records (using ConsentLog)
+            consents = db.query(ConsentLog).filter(
+                ConsentLog.phone == phone_number
             ).all()
             
             for consent in consents:

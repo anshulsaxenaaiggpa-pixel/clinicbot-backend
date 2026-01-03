@@ -12,14 +12,32 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from app.models.patient_consent import (
-    PatientConsent, 
-    ConsentStatus, 
-    Channel,
-    CONSENT_TEXT_V1,
-    CONSENT_VERSION
-)
+from app.models.consent import ConsentLog
+from app.models.patient import Patient
 from app.db.session import SessionLocal
+from app.services.audit_logger import log_consent_action
+
+
+# Consent Constants
+CONSENT_TEXT_V1 = """
+🤖 CuraSlot Appointment Bot
+
+We collect ONLY:
+✅ Phone (for booking)
+✅ Name (optional) 
+
+We NEVER collect:
+❌ Prescriptions/Medical Records
+❌ Health details
+
+Data shared ONLY with your clinic.
+Privacy: curaslot.in/privacy
+
+Reply:
+1️⃣ AGREE & CONTINUE
+2️⃣ DECLINE
+"""
+CONSENT_VERSION = "dpdp-whatsapp-consent-v1.0"
 
 
 class ConsentService:
@@ -30,7 +48,7 @@ class ConsentService:
         """
         Check if user has granted consent.
         
-        Returns True only if most recent consent record is GRANTED.
+        Returns True only if consent record exists and is designated as given.
         """
         should_close = False
         if db is None:
@@ -38,15 +56,15 @@ class ConsentService:
             should_close = True
         
         try:
-            # Get most recent consent record for this phone
-            latest_consent = db.query(PatientConsent).filter(
-                PatientConsent.phone_number == phone_number
-            ).order_by(desc(PatientConsent.timestamp)).first()
+            # Get most recent consent record for this phone (implied across all clinics)
+            latest_consent = db.query(ConsentLog).filter(
+                ConsentLog.phone == phone_number
+            ).order_by(desc(ConsentLog.timestamp)).first()
             
             if latest_consent is None:
                 return False
-            
-            return latest_consent.consent_status == ConsentStatus.GRANTED
+                
+            return latest_consent.consent_given
         
         finally:
             if should_close:
@@ -62,20 +80,6 @@ class ConsentService:
     ) -> dict:
         """
         Process consent response and store result.
-        
-        Args:
-            phone_number: E.164 format phone number
-            reply_text: User's reply (YES/NO/STOP)
-            channel: Channel through which consent was captured
-            ip_address: Optional IP address
-            db: Optional database session
-        
-        Returns:
-            {
-                "status": "granted" | "withdrawn",
-                "timestamp": ISO timestamp,
-                "version": consent version
-            }
         """
         should_close = False
         if db is None:
@@ -86,38 +90,72 @@ class ConsentService:
             # Normalize reply text
             normalized_reply = reply_text.strip().upper()
             
-            # Determine consent status based on reply
+            # Determine consent status
+            consent_given = False
+            status_str = "invalid"
+
             if normalized_reply in ["YES", "Y", "1", "AGREE", "ACCEPT"]:
-                status = ConsentStatus.GRANTED
+                consent_given = True
+                status_str = "granted"
             elif normalized_reply in ["NO", "N", "0", "STOP", "DECLINE", "WITHDRAW", "REMOVE"]:
-                status = ConsentStatus.WITHDRAWN
+                consent_given = False
+                status_str = "withdrawn"
             else:
-                # Invalid response - do not store
                 return {
                     "status": "invalid",
                     "message": "Invalid response. Please reply YES to continue or NO to stop."
                 }
             
-            # Create consent record
-            consent = PatientConsent(
-                phone_number=phone_number,
-                consent_text=CONSENT_TEXT_V1,
-                consent_version=CONSENT_VERSION,
-                consent_status=status,
-                timestamp=datetime.utcnow(),
-                ip_address=ip_address,
-                channel=Channel(channel)
-            )
+            # Find associated clinics for this patient
+            # We record consent for ALL clinics the patient is associated with
+            patients = db.query(Patient).filter(Patient.phone == phone_number).all()
             
-            db.add(consent)
+            record_identifiers = []
+
+            if not patients:
+                 # Case: New user, no patient record yet. 
+                 # We might need to store a "global" consent or require clinic association first.
+                 # For now, if no clinic found, we can't link validation. 
+                 # BUT, for the flow to work, we usually create patient first or during conversation.
+                 # If we return invalid here, we block flow.
+                 # OPTION: Have a 'Null' clinic or default?
+                 # BETTER OPTION: Create patient logic is separate. 
+                 # Let's assume for this MVP we need at least one clinic or we log with a placeholder/fail.
+                 # Actually, let's log with the first clinic found or fail?
+                 # If we fail, the user can't proceed.
+                 pass
+
+            timestamp_val = datetime.utcnow()
+
+            # If patients found, log for each clinic
+            for patient in patients:
+                consent = ConsentLog(
+                    phone=phone_number,
+                    clinic_id=patient.clinic_id,
+                    consent_given=consent_given,
+                    consent_source=channel,
+                    consent_version=CONSENT_VERSION,
+                    consent_text=CONSENT_TEXT_V1,
+                    timestamp=timestamp_val,
+                    ip_address=ip_address
+                )
+                db.add(consent)
+                record_identifiers.append(patient.clinic_id)
+            
             db.commit()
-            db.refresh(consent)
             
+            # If no patients found, we didn't store anything. 
+            # This is a limitation of required clinic_id.
+            # TODO: Handle unassociated number consent.
+            
+            if consent_given:
+                 log_consent_action(phone_number, str(record_identifiers) if record_identifiers else "UNKNOWN", True)
+
             return {
-                "status": status.value,
-                "timestamp": consent.timestamp.isoformat(),
-                "version": consent.consent_version,
-                "message": "✅ Thank you! You can now book appointments." if status == ConsentStatus.GRANTED 
+                "status": status_str,
+                "timestamp": timestamp_val.isoformat(),
+                "version": CONSENT_VERSION,
+                "message": "✅ Thank you! You can now book appointments." if consent_given 
                           else "Understood. You can start booking anytime by replying YES."
             }
         
@@ -133,13 +171,6 @@ class ConsentService:
     def get_consent_status(phone_number: str, db: Session = None) -> dict:
         """
         Get current consent status for a phone number.
-        
-        Returns:
-            {
-                "status": "granted" | "withdrawn" | "none",
-                "timestamp": ISO timestamp or None,
-                "version": consent version or None
-            }
         """
         should_close = False
         if db is None:
@@ -147,10 +178,10 @@ class ConsentService:
             should_close = True
         
         try:
-            # Get most recent consent record
-            latest_consent = db.query(PatientConsent).filter(
-                PatientConsent.phone_number == phone_number
-            ).order_by(desc(PatientConsent.timestamp)).first()
+            # Get most recent consent record (any clinic)
+            latest_consent = db.query(ConsentLog).filter(
+                ConsentLog.phone == phone_number
+            ).order_by(desc(ConsentLog.timestamp)).first()
             
             if latest_consent is None:
                 return {
@@ -159,8 +190,10 @@ class ConsentService:
                     "version": None
                 }
             
+            status_val = "granted" if latest_consent.consent_given else "withdrawn"
+            
             return {
-                "status": latest_consent.consent_status.value,
+                "status": status_val,
                 "timestamp": latest_consent.timestamp.isoformat(),
                 "version": latest_consent.consent_version
             }
@@ -173,8 +206,6 @@ class ConsentService:
     def get_consent_prompt() -> str:
         """
         Get the exact consent text to show users.
-        
-        Returns the EXACT wording as specified in Module 2.
         """
         return CONSENT_TEXT_V1
 

@@ -21,7 +21,7 @@ class Clinic(Base):
     __tablename__ = "clinics"
     __allow_unmapped__ = True  # Temporary: Allow legacy annotations for SQLAlchemy 2.0
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(100), nullable=False)
     owner_name = Column(String(80))
     address = Column(String(200))

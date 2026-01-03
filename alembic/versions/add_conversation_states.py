@@ -20,30 +20,13 @@ depends_on = None
 def upgrade():
     """Create conversation_states table."""
     
-    # Create booking_state enum
-    booking_state_enum = postgresql.ENUM(
-        'initial',
-        'consent_pending',
-        'age_verification',
-        'clinic_selection',
-        'doctor_selection',
-        'service_selection',
-        'date_selection',
-        'time_selection',
-        'confirmed',
-        'cancelled',
-        name='booking_state',
-        create_type=True
-    )
-    booking_state_enum.create(op.get_bind())
-    
     # Create conversation_states table
     op.create_table(
         'conversation_states',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column('id', sa.String(36), primary_key=True),
         sa.Column('phone_number', sa.String(20), nullable=False, unique=True),
-        sa.Column('current_state', booking_state_enum, nullable=False, server_default='initial'),
-        sa.Column('context', postgresql.JSONB, nullable=True),
+        sa.Column('current_state', sa.String(30), nullable=False, server_default='initial'),
+        sa.Column('context', sa.JSON, nullable=True),
         sa.Column('last_message_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
@@ -56,16 +39,17 @@ def upgrade():
     op.create_index('idx_conversation_state', 'conversation_states', ['current_state'])
     op.create_index('idx_conversation_expires', 'conversation_states', ['expires_at'])
     
-    # Create cleanup function for expired states (run via cron)
-    op.execute("""
-        CREATE OR REPLACE FUNCTION cleanup_expired_conversations()
-        RETURNS void AS $$
-        BEGIN
-            DELETE FROM conversation_states
-            WHERE expires_at < NOW();
-        END;
-        $$ LANGUAGE plpgsql;
-    """)
+    # Create cleanup function for expired states (run via cron) - PostgreSQL only
+    if op.get_bind().dialect.name == 'postgresql':
+        op.execute("""
+            CREATE OR REPLACE FUNCTION cleanup_expired_conversations()
+            RETURNS void AS $$
+            BEGIN
+                DELETE FROM conversation_states
+                WHERE expires_at < NOW();
+            END;
+            $$ LANGUAGE plpgsql;
+        """)
 
 
 def downgrade():
