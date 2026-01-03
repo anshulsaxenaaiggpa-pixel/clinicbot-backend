@@ -59,15 +59,14 @@ class AuditService:
             should_close = True
         
         try:
-            # For now, use a default clinic_id until we have proper context
-            # This is a temporary solution - ideally we'd get clinic_id from context
-            default_clinic_id = "00000000-0000-0000-0000-000000000000"
+            # Get clinic_id from metadata or use None
+            clinic_id = metadata.get("clinic_id") if metadata else None
             
             # Map the new-style parameters to the actual schema
             # actor -> actor_type, actor_id -> actor_reference, event_type -> action
             audit = AuditLog(
                 id=str(uuid.uuid4()),
-                clinic_id=default_clinic_id,
+                clinic_id=clinic_id,
                 actor_type=actor,  # system/clinic/admin/patient
                 actor_reference=actor_id,  # phone number or admin ID
                 action=event_type,  # The event type becomes the action

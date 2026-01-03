@@ -9,7 +9,7 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=False)
+    clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=True)  # Changed to nullable
     actor_type = Column(String(20), nullable=False)  # PATIENT/STAFF/SYSTEM
     actor_reference = Column(String(100), nullable=False)  # phone/staff_id
     action = Column(String(50), nullable=False)  # CONSENT_GIVEN/BOOK_APPOINTMENT
