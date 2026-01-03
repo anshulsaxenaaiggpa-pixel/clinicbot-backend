@@ -18,39 +18,117 @@
                         appointment booking.
                     </p>
 
-                    <form method="GET" action="/admin/tools/qr/">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <select class="form-select" id="doctorSelect" required>
-                                    <option value="">-- Select Doctor --</option>
-                                    {% for doctor in doctors %}
-                                    <option value="{{ doctor.id }}">
-                                        {{ doctor.full_name }} - {{ doctor.specialty }} ({{ doctor.city }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <button type="button" class="btn btn-primary w-100" onclick="generateQR()">
-                                    <i class="bi bi-qr-code"></i> Generate QR Code
-                                </button>
-                            </div>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <select class="form-select" id="doctorSelect" required onchange="generateQR()">
+                                <option value="">-- Select Doctor --</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}" data-name="{{ doctor.full_name }}"
+                                    data-specialty="{{ doctor.specialty }}" data-city="{{ doctor.city }}"
+                                    data-phone="{{ doctor.whatsapp_number }}">
+                                    {{ doctor.full_name }} - {{ doctor.specialty }} ({{ doctor.city }})
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
-                    </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Display Area -->
+    <div id="qrDisplay" class="row" style="display:none;">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title mb-3">QR Code</h5>
+                    <div id="qrcode" class="mb-3"></div>
+                    <button class="btn btn-primary" onclick="downloadQR()">
+                        <i class="bi bi-download"></i> Download QR Code
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Share Message</h5>
+                    <textarea id="shareMessage" class="form-control" rows="8" readonly></textarea>
+                    <button class="btn btn-secondary mt-2" onclick="copyMessage()">
+                        <i class="bi bi-clipboard"></i> Copy Message
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- QRCode.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
 <script>
+    let qrCodeInstance = null;
+
     function generateQR() {
-        const doctorId = document.getElementById('doctorSelect').value;
-        if (!doctorId) {
-            alert('Please select a doctor');
+        const select = document.getElementById('doctorSelect');
+        const selectedOption = select.options[select.selectedIndex];
+
+        if (!selectedOption.value) {
+            document.getElementById('qrDisplay').style.display = 'none';
             return;
         }
-        window.location.href = `/admin/tools/qr/${doctorId}`;
+
+        const doctorName = selectedOption.dataset.name;
+        const specialty = selectedOption.dataset.specialty;
+        const city = selectedOption.dataset.city;
+        const phone = selectedOption.dataset.phone;
+
+        // Create WhatsApp link
+        const message = encodeURIComponent(`Hi! I'd like to book an appointment with ${doctorName}`);
+        const whatsappLink = `https://wa.me/${phone}?text=${message}`;
+
+        // Clear previous QR code
+        document.getElementById('qrcode').innerHTML = '';
+
+        // Generate new QR code
+        qrCodeInstance = new QRCode(document.getElementById('qrcode'), {
+            text: whatsappLink,
+            width: 300,
+            height: 300,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+
+        // Update share message
+        document.getElementById('shareMessage').value =
+            `Book an appointment with ${doctorName}\n\n` +
+            `Specialty: ${specialty}\n` +
+            `City: ${city}\n\n` +
+            `Click here to book via WhatsApp:\n${whatsappLink}\n\n` +
+            `Or scan the QR code to connect instantly!`;
+
+        // Show display area
+        document.getElementById('qrDisplay').style.display = 'flex';
+    }
+
+    function downloadQR() {
+        const canvas = document.querySelector('#qrcode canvas');
+        if (canvas) {
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'doctor-qr-code.png';
+            a.click();
+        }
+    }
+
+    function copyMessage() {
+        const textarea = document.getElementById('shareMessage');
+        textarea.select();
+        document.execCommand('copy');
+        alert('Message copied to clipboard!');
     }
 </script>
 {% endblock %}
