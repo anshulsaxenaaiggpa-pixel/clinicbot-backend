@@ -47,18 +47,29 @@ class RateLimiter:
     def check_rate_limit(
         self,
         identifier: str,       # phone number or IP address
-        action: str,           # messages/bookings/requests
-        window: str,          # per_minute/per_hour
-        limit: Optional[int] = None
+        action: str = None,    # messages/bookings/requests OR limit_type
+        window: str = None,    # per_minute/per_hour (for legacy calls)
+        limit: Optional[int] = None,
+        # New parameters for custom windows
+        limit_type: str = None,
+        max_requests: Optional[int] = None,
+        window_seconds: Optional[int] = None
     ) -> Tuple[bool, Optional[str]]:
         """
         Check if action is within rate limits.
         
+        Supports two calling patterns:
+        1. Legacy: check_rate_limit(identifier, action, window, limit)
+        2. Custom: check_rate_limit(identifier, limit_type, max_requests, window_seconds)
+        
         Args:
             identifier: Phone number or IP address
-            action: Type of action (messages/bookings/requests)
-            window: Time window (per_minute/per_hour)
-            limit: Optional override limit
+            action: Type of action (messages/bookings/requests) - legacy
+            window: Time window (per_minute/per_hour) - legacy
+            limit: Optional override limit - legacy
+            limit_type: Type of limit (for custom windows)
+            max_requests: Maximum requests allowed (for custom windows)
+            window_seconds: Time window in seconds (for custom windows)
         
         Returns:
             (allowed: bool, error_message: Optional[str])
@@ -68,33 +79,44 @@ class RateLimiter:
             return True, None
         
         try:
-            # Determine limit configuration
-            window_seconds = 60 if window == "per_minute" else 3600
-            
-            # Get configured limit
-            if limit is None:
-                # Determine rate limit key
-                if identifier.startswith("+"):  # Phone number
-                    limit_key = f"per_phone_{window.split('_')[1]}"
-                else:  # IP address
-                    limit_key = f"per_ip_{window.split('_')[1]}"
+            # Determine which calling pattern is being used
+            if max_requests is not None or window_seconds is not None:
+                # New calling pattern with custom window
+                action_type = limit_type or action
+                rate_limit = max_requests if max_requests is not None else 100
+                window_secs = window_seconds if window_seconds is not None else 60
+            else:
+                # Legacy calling pattern
+                action_type = action
+                # Determine limit configuration
+                window_secs = 60 if window == "per_minute" else 3600
                 
-                limit = RATE_LIMITS.get(limit_key, {}).get(action, 100)
+                # Get configured limit
+                if limit is None:
+                    # Determine rate limit key
+                    if identifier.startswith("+"):  # Phone number
+                        limit_key = f"per_phone_{window.split('_')[1]}"
+                    else:  # IP address
+                        limit_key = f"per_ip_{window.split('_')[1]}"
+                    
+                    rate_limit = RATE_LIMITS.get(limit_key, {}).get(action, 100)
+                else:
+                    rate_limit = limit
             
             # Create Redis key
-            key = f"rate_limit:{window}:{action}:{identifier}"
+            key = f"rate_limit:{window_secs}s:{action_type}:{identifier}"
             
             # Get current count
             current = self.redis_client.get(key)
             current_count = int(current) if current else 0
             
             # Check limit
-            if current_count >= limit:
+            if current_count >= rate_limit:
                 ttl = self.redis_client.ttl(key)
                 error_msg = f"Rate limit exceeded. Try again in {ttl} seconds."
                 
                 # Log rate limit block
-                log_rate_limit_block(identifier, action)
+                log_rate_limit_block(identifier, action_type)
                 
                 return False, error_msg
             
@@ -103,7 +125,7 @@ class RateLimiter:
             pipe.incr(key)
             if current_count == 0:
                 # Set expiry on first increment
-                pipe.expire(key, window_seconds)
+                pipe.expire(key, window_secs)
             pipe.execute()
             
             return True, None

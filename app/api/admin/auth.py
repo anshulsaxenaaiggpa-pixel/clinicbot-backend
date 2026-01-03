@@ -6,6 +6,7 @@ Login, logout, and session management for admin UI.
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.auth.session import session_manager
@@ -17,7 +18,13 @@ from app.db.session import get_db
 
 
 router = APIRouter(prefix="/admin", tags=["admin-auth"])
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent.parent / "templates"))
+
+
+@router.get("/", response_class=HTMLResponse)
+async def admin_root(request: Request):
+    """Redirect /admin to /admin/login"""
+    return RedirectResponse(url="/admin/login", status_code=302)
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -45,6 +52,22 @@ async def login(
     mfa_token: str = Form(None),
     db: Session = Depends(get_db)
 ):
+    try:
+        return await _login_impl(request, email, password, mfa_token, db)
+    except Exception as e:
+        import traceback
+        return HTMLResponse(
+            content=f"<h1>Login Error</h1><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>",
+            status_code=500
+        )
+
+async def _login_impl(
+    request: Request,
+    email: str,
+    password: str,
+    mfa_token: str,
+    db: Session
+):
     """
     Authenticate admin user.
     
@@ -62,7 +85,8 @@ async def login(
     
     # Rate limit: 5 login attempts per 15 minutes per IP
     rate_limit_key = f"login_attempt:{client_ip}"
-    if not rate_limiter.check_rate_limit(rate_limit_key, "login", max_requests=5, window_seconds=900):
+    allowed, error_msg = rate_limiter.check_rate_limit(rate_limit_key, "login", max_requests=5, window_seconds=900)
+    if not allowed:
         # Log failed attempt
         AuditService.log_event(
             event_type="admin_login_rate_limited",
@@ -212,7 +236,7 @@ async def login(
     return response
 
 
-@router.post("/logout")
+@router.api_route("/logout", methods=["GET", "POST"])
 async def logout(
     request: Request,
     admin_user: AdminUser = Depends(require_admin),
