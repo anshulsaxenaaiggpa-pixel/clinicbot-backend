@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Index
+from sqlalchemy import Column, String, DateTime, Index
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from datetime import datetime
@@ -9,7 +9,7 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=True)  # Changed to nullable
+    # clinic_id removed - not in current Railway database schema
     actor_type = Column(String(20), nullable=False)  # PATIENT/STAFF/SYSTEM
     actor_reference = Column(String(100), nullable=False)  # phone/staff_id
     action = Column(String(50), nullable=False)  # CONSENT_GIVEN/BOOK_APPOINTMENT
@@ -22,7 +22,6 @@ class AuditLog(Base):
 
     # Indexes for query performance
     __table_args__ = (
-        Index('idx_audit_clinic_timestamp', 'clinic_id', 'timestamp'),
         Index('idx_audit_action', 'action'),
         Index('idx_audit_entity', 'entity_type', 'entity_id'),
     )

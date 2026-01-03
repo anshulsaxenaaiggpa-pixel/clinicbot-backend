@@ -59,14 +59,11 @@ class AuditService:
             should_close = True
         
         try:
-            # Get clinic_id from metadata or use None
-            clinic_id = metadata.get("clinic_id") if metadata else None
-            
             # Map the new-style parameters to the actual schema
             # actor -> actor_type, actor_id -> actor_reference, event_type -> action
             audit = AuditLog(
                 id=str(uuid.uuid4()),
-                clinic_id=clinic_id,
+                # clinic_id removed - not in current database schema
                 actor_type=actor,  # system/clinic/admin/patient
                 actor_reference=actor_id,  # phone number or admin ID
                 action=event_type,  # The event type becomes the action
