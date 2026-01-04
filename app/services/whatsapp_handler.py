@@ -207,7 +207,7 @@ class WhatsAppMessageHandler:
                         # No pending appointment - patient might be uploading for subscription
                         await self.whatsapp_sender.send_message(
                             to=user_phone,
-                            message="Image received. If you're making a payment, please book an appointment first by typing 'book'.",
+                            message=\"Image received. If you're making a payment, please book an appointment first by typing 'book'.\",
                             provider=message_data.get("provider")
                         )
                         return
@@ -216,22 +216,6 @@ class WhatsAppMessageHandler:
                 # Continue with existing text message flow
                 if not message_text:
                     logger.warning(f"No text in message from {user_phone}")
-                    return
-        
-        try:
-            # Get/create patient in database
-            db = SessionLocal()
-            try:
-                # Get clinic_id from WhatsApp business number
-                clinic_id = self._get_clinic_id_for_number(message_data.get("to"))
-                
-                if not clinic_id:
-                    # Clinic not found - send error and exit
-                    await self.whatsapp_sender.send_message(
-                        to=user_phone,
-                        message="Sorry, this WhatsApp number is not registered with any clinic. Please contact support.",
-                        provider=message_data.get("provider")
-                    )
                     return
                 
                 # ===== USA/GLOBAL CCPA/GDPR COMMANDS (DATA, DELETE, EXPORT) =====

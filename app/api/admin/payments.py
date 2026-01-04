@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 import uuid
+import logging
 
 from app.api.admin.dependencies import require_admin
 from app.models.admin_user import AdminUser
@@ -17,6 +18,7 @@ from app.services.whatsapp_sender import WhatsAppSender
 from app.db.session import get_db
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/payments", tags=["admin-payments"])
 whatsapp = WhatsAppSender()
 
