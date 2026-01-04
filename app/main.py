@@ -48,6 +48,24 @@ async def run_config_validation():
     print("✅ SECURITY VALIDATION PASSED - Application starting")
     print("=" * 80 + "\n")
     
+    # ===== AUTO-MIGRATION ON STARTUP =====
+    print("=" * 80)
+    print("🔄 RUNNING DATABASE MIGRATIONS")
+    print("=" * 80)
+    try:
+        from alembic.config import Config
+        from alembic import command
+        
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        print("✅ Database migrations completed successfully")
+    except Exception as e:
+        print(f"❌ Migration failed: {e}")
+        print(traceback.format_exc())
+        print("⚠️ App continuing without migrations - some features may not work")
+    print("=" * 80 + "\n")
+    # ===== END AUTO-MIGRATION =====
+    
     # ENSURE CONSENT_LOG TABLE EXISTS (critical for WhatsApp flow)
     print("🗄️ Ensuring consent_log table exists...")
     try:
