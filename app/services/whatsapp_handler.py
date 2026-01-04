@@ -207,7 +207,7 @@ class WhatsAppMessageHandler:
                         # No pending appointment - patient might be uploading for subscription
                         await self.whatsapp_sender.send_message(
                             to=user_phone,
-                            message=\"Image received. If you're making a payment, please book an appointment first by typing 'book'.\",
+                            message="Image received. If you're making a payment, please book an appointment first by typing 'book'.",
                             provider=message_data.get("provider")
                         )
                         return
