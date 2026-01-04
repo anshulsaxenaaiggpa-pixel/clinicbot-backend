@@ -8,11 +8,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.api.admin.dependencies import require_admin
 from app.models.admin_user import AdminUser
-from app.models.appointment import Appointment
 from app.db.session import get_db
 
 
@@ -28,20 +26,12 @@ async def payments_page(
 ):
     """Display pending payment receipts page."""
     
-    # Get pending payment receipts
-    pending_payments = db.query(Appointment).filter(
-        Appointment.payment_status.in_(['pending', 'verified'])
-    ).order_by(
-        Appointment.receipt_uploaded_at.desc()
-    ).limit(50).all()
-    
-    # Calculate stats
+    # TEMPORARILY SIMPLIFIED - No database queries
+    # TODO: Re-enable after fixing database issues
+    pending_payments = []
     stats = {
-        "verified_today": db.query(Appointment).filter(
-            Appointment.payment_status == 'confirmed',
-            func.date(Appointment.payment_verified_at) == func.current_date()
-        ).count() if pending_payments else 0,
-        "total_amount": sum([float(appt.payment_amount or appt.amount_paid or 0) for appt in pending_payments])
+        "verified_today": 0,
+        "total_amount": 0
     }
     
     return templates.TemplateResponse(
