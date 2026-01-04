@@ -95,9 +95,128 @@ class WhatsAppMessageHandler:
         message_text = message_data.get("body", "").strip()
         whatsapp_name = message_data.get("profile_name") or message_data.get("contact_name")
         
-        if not user_phone or not message_text:
+        # NEW: Check for image upload (payment receipt)
+        media_url = message_data.get("media_url")
+        num_media = message_data.get("num_media", 0)
+        
+        if not user_phone:
             logger.warning(f"Invalid message data: {message_data}")
             return
+        
+        try:
+            # Get/create patient in database
+            db = SessionLocal()
+            try:
+                # Get clinic_id from WhatsApp business number
+                clinic_id = self._get_clinic_id_for_number(message_data.get("to"))
+                
+                if not clinic_id:
+                    # Clinic not found - send error and exit
+                    await self.whatsapp_sender.send_message(
+                        to=user_phone,
+                        message="Sorry, this WhatsApp number is not registered with any clinic. Please contact support.",
+                        provider=message_data.get("provider")
+                    )
+                    return
+                
+                # ===== IMAGE MESSAGE HANDLING (PAYMENT RECEIPTS) =====
+                if media_url and num_media > 0:
+                    logger.info(f"📸 Image received from {user_phone}: {media_url}")
+                    
+                    # Find pending payment appointment for this patient
+                    from app.models.appointment import Appointment
+                    pending_appointment = db.query(Appointment).filter(
+                        Appointment.patient_phone == user_phone,
+                        Appointment.payment_status == 'pending'
+                    ).order_by(Appointment.created_at.desc()).first()
+                    
+                    if pending_appointment:
+                        # Patient has pending payment - verify receipt
+                        logger.info(f"Found pending appointment {pending_appointment.id}, verifying receipt...")
+                        
+                        from app.services.receipt_handler import receipt_service
+                        from datetime import datetime
+                        
+                        try:
+                            # Verify receipt via OCR
+                            result = await receipt_service.verify_receipt(
+                                image_url=media_url,
+                                expected_amount=float(pending_appointment.amount_paid)
+                            )
+                            
+                            logger.info(f"OCR Result: {result}")
+                            
+                            # Update appointment with receipt info
+                            pending_appointment.payment_receipt_url = media_url
+                            pending_appointment.receipt_uploaded_at = datetime.utcnow()
+                            pending_appointment.receipt_ocr_text = result.get("text", "")[:500]  # Store first 500 chars
+                            
+                            if result["status"] == "verified":
+                                # OCR verified - queue for doctor approval
+                                pending_appointment.payment_status = "verified"
+                                pending_appointment.payment_amount = result["amount"]
+                                pending_appointment.payment_method = result.get("payment_method", "Unknown")
+                                
+                                db.commit()
+                                
+                                await self.whatsapp_sender.send_message(
+                                    to=user_phone,
+                                    message=(
+                                        f"✅ Receipt received!\n\n"
+                                        f"Amount verified: ₹{result['amount']}\n"
+                                        f"Payment method: {result.get('payment_method', 'UPI')}\n\n"
+                                        f"Doctor will confirm your appointment shortly."
+                                    ),
+                                    provider=message_data.get("provider")
+                                )
+                                
+                                # TODO: Notify doctor via SMS/email about pending approval
+                                logger.info(f"✅ Receipt verified and queued for approval: {pending_appointment.id}")
+                                return
+                            
+                            else:
+                                # OCR failed - ask patient to retry
+                                pending_appointment.payment_status = "pending"
+                                db.commit()
+                                
+                                await self.whatsapp_sender.send_message(
+                                    to=user_phone,
+                                    message=(
+                                        f"❌ Could not verify receipt\n\n"
+                                        f"Please ensure screenshot shows:\n"
+                                        f"✓ Amount: ₹{pending_appointment.amount_paid}\n"
+                                        f"✓ Payment successful\n"
+                                        f"✓ Transaction ID visible\n\n"
+                                        f"Upload a clear screenshot to try again."
+                                    ),
+                                    provider=message_data.get("provider")
+                                )
+                                logger.warning(f"OCR verification failed: {result}")
+                                return
+                        
+                        except Exception as ocr_error:
+                            logger.error(f"OCR processing error: {ocr_error}")
+                            await self.whatsapp_sender.send_message(
+                                to=user_phone,
+                                message="Sorry, couldn't process the receipt. Please try again or contact support.",
+                                provider=message_data.get("provider")
+                            )
+                            return
+                    
+                    else:
+                        # No pending appointment - patient might be uploading for subscription
+                        await self.whatsapp_sender.send_message(
+                            to=user_phone,
+                            message="Image received. If you're making a payment, please book an appointment first by typing 'book'.",
+                            provider=message_data.get("provider")
+                        )
+                        return
+                # ===== END IMAGE HANDLING =====
+                
+                # Continue with existing text message flow
+                if not message_text:
+                    logger.warning(f"No text in message from {user_phone}")
+                    return
         
         try:
             # Get/create patient in database
