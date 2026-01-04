@@ -22,12 +22,40 @@
             border-left-color: #28a745;
             background: #e8f5e9;
         }
+
+        .nav-tabs .nav-link {
+            color: #495057;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #007bff;
+            font-weight: bold;
+        }
     </style>
 </head>
 
 <body class="bg-light p-5">
     <div class="container">
-        <h1 class="display-4 text-primary mb-4">🎉 CuraSlot Dashboard LIVE!</h1>
+        <h1 class="display-4 text-primary mb-4">🎉 CuraSlot Dashboard</h1>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link active" href="/admin/dashboard">Dashboard</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/payments">💰 Payments</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/doctors">👨‍⚕️ Doctors</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/tools/qr">📱 QR Codes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/audit">📋 Audit Logs</a>
+            </li>
+        </ul>
 
         <div class="row mb-5">
             <div class="col-md-3">

@@ -259,7 +259,14 @@ from app.api import onboarding
 admin_import_error = None
 admin_loaded = False
 try:
-    from app.api.admin import doctors as admin_doctors, tools as admin_tools, audit as admin_audit, auth as admin_auth, payments as admin_payments
+    from app.api.admin import (
+        auth as admin_auth,
+        doctors as admin_doctors,
+        tools as admin_tools,
+        audit as admin_audit,
+        payments as admin_payments,
+        payments_page as admin_payments_page  # NEW: Payments page UI
+    )
     admin_loaded = True
 except Exception as e:
     print(f"❌ Admin UI Import Failed: {e}")
@@ -273,7 +280,8 @@ if settings.ADMIN_UI_ENABLED:
         app.include_router(admin_doctors.router, tags=["admin-doctors"])
         app.include_router(admin_tools.router, tags=["admin-tools"])
         app.include_router(admin_audit.router, tags=["admin-audit"])
-        app.include_router(admin_payments.router, tags=["admin-payments"])  # NEW: Payment approval routes
+        app.include_router(admin_payments.router, tags=["admin-payments"])
+        app.include_router(admin_payments_page.router, tags=["admin-payments-page"])  # NEW: Payment approval routes
     else:
         # Fallback for Import Errors - Prevents startup crash
         print("⚠️ Admin UI disabled due to import error - activating fallback debugger")

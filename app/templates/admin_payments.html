@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Payments - CuraSlot Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .receipt-thumbnail {
+            max-width: 120px;
+            max-height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid #dee2e6;
+        }
+
+        .receipt-thumbnail:hover {
+            transform: scale(1.05);
+            border-color: #007bff;
+        }
+
+        .payment-row.verified {
+            background-color: #d4edda;
+        }
+
+        .payment-row.pending {
+            background-color: #fff3cd;
+        }
+
+        .badge-upi {
+            background-color: #6610f2;
+        }
+
+        .badge-zelle {
+            background-color: #6f42c1;
+        }
+
+        .badge-venmo {
+            background-color: #3b7ddd;
+        }
+
+        .badge-wise {
+            background-color: #9fe870;
+            color: #000;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #007bff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body class="bg-light p-4">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-5 text-primary">💰 Payment Approvals</h1>
+            <a href="/admin/logout" class="btn btn-outline-danger">Logout</a>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/dashboard">Dashboard</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/admin/payments">💰 Payments</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/doctors">👨‍⚕️ Doctors</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/tools/qr">📱 QR Codes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/audit">📋 Audit Logs</a>
+            </li>
+        </ul>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-warning text-white text-center p-3">
+                    <h3>{{ pending_payments|length }}</h3>
+                    <p class="mb-0">Pending Payments</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white text-center p-3">
+                    <h3>{{ stats.verified_today }}</h3>
+                    <p class="mb-0">Verified Today</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white text-center p-3">
+                    <h3>₹{{ stats.total_amount }}</h3>
+                    <p class="mb-0">Total Pending</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Payments Table -->
+        {% if pending_payments %}
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">📸 Pending Payment Receipts</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Time</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Receipt</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appt in pending_payments %}
+                            <tr
+                                class="payment-row {% if appt.payment_status == 'verified' %}verified{% else %}pending{% endif %}">
+                                <td>
+                                    <strong>{{ appt.patient_name or appt.patient_phone[-4:] }}</strong><br>
+                                    <small class="text-muted">{{ appt.patient_phone }}</small>
+                                </td>
+                                <td>{{ appt.doctor.name if appt.doctor else 'N/A' }}</td>
+                                <td>
+                                    {% if appt.start_utc_ts %}
+                                    {{ appt.start_utc_ts.strftime('%b %d') }}<br>
+                                    <small class="text-muted">{{ appt.start_utc_ts.strftime('%I:%M %p') }}</small>
+                                    {% else %}
+                                    N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong class="text-success">₹{{ appt.payment_amount or appt.amount_paid }}</strong>
+                                </td>
+                                <td>
+                                    {% if appt.payment_method %}
+                                    <span class="badge badge-{{ appt.payment_method|lower }}">{{ appt.payment_method
+                                        }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if appt.payment_receipt_url %}
+                                    <a href="{{ appt.payment_receipt_url }}" target="_blank"
+                                        title="Click to view full size">
+                                        <img src="{{ appt.payment_receipt_url }}" class="receipt-thumbnail"
+                                            alt="Receipt">
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">No receipt</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if appt.payment_status == 'verified' %}
+                                    <span class="badge bg-success">✓ OCR Verified</span>
+                                    {% elif appt.payment_status == 'confirmed' %}
+                                    <span class="badge bg-primary">✓ Confirmed</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">⏳ Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST" action="/admin/payments/{{ appt.id }}/approve"
+                                        style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-success"
+                                            title="Approve payment and confirm appointment">
+                                            ✅ Approve
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="/admin/payments/{{ appt.id }}/reject"
+                                        style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger"
+                                            title="Reject payment and request new receipt">
+                                            ❌ Reject
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <h4>✅ No Pending Payments</h4>
+            <p class="mb-0">All payments are verified! Check back later for new receipts.</p>
+        </div>
+        {% endif %}
+
+        <!-- Quick Actions -->
+        <div class="mt-4">
+            <a href="/admin/dashboard" class="btn btn-outline-primary">← Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
