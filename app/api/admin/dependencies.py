@@ -2,8 +2,11 @@
 Admin UI Dependencies - RBAC Enforcement with Policy Violation Logging
 
 FastAPI dependencies for admin authentication, RBAC, and CSRF protection.
+
+CRITICAL FIX: require_admin now returns RedirectResponse instead of raising HTTPException
+to properly handle session validation failures and prevent login loops.
 """
-from typing import Optional
+from typing import Optional, Union
 from fastapi import Request, HTTPException, status, Depends, Header
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -41,22 +44,18 @@ async def require_admin(
     session_token = request.cookies.get(session_manager.COOKIE_NAME)
     
     if not session_token:
-        # Not authenticated - redirect to login
-        raise HTTPException(
-            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
-            headers={"Location": "/admin/login"}
-        )
+        # Not authenticated - return redirect response
+        return RedirectResponse(url="/admin/login", status_code=302)
     
     # Validate session
     client_ip = get_client_ip(request)
     session_data = session_manager.validate_session(session_token, client_ip)
     
     if not session_data:
-        # Invalid/expired session - redirect to login
-        raise HTTPException(
-            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
-            headers={"Location": "/admin/login"}
-        )
+        # Invalid/expired session - clear cookie and redirect to login
+        response = RedirectResponse(url="/admin/login", status_code=302)
+        response.delete_cookie(session_manager.COOKIE_NAME)
+        return response
     
     # Retrieve admin user
     admin_user = db.query(AdminUser).filter(
@@ -64,11 +63,10 @@ async def require_admin(
     ).first()
     
     if not admin_user or not admin_user.is_active:
-        # User not found or inactive
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account inactive"
-        )
+        # User not found or inactive - clear cookie and redirect
+        response = RedirectResponse(url="/admin/login", status_code=302)
+        response.delete_cookie(session_manager.COOKIE_NAME)
+        return response
     
     # Store session data in request state for templates
     request.state.admin_user = admin_user
