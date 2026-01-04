@@ -265,24 +265,34 @@ try:
         tools as admin_tools,
         audit as admin_audit,
         payments as admin_payments,
-        payments_page as admin_payments_page  # NEW: Payments page UI
+        payments_page as admin_payments_page,
+        test as admin_test  # NEW: Test route
     )
     admin_loaded = True
 except Exception as e:
     print(f"❌ Admin UI Import Failed: {e}")
+    import traceback
     traceback.print_exc()
+    admin_loaded = False
     admin_import_error = str(e)
 
 # Admin UI routes (requires SESSION_SECRET_KEY and ADMIN_UI_ENABLED=True)
 if settings.ADMIN_UI_ENABLED:
     if admin_loaded:
-        app.include_router(admin_auth.router, tags=["admin-auth"])
-        app.include_router(admin_doctors.router, tags=["admin-doctors"])
-        app.include_router(admin_tools.router, tags=["admin-tools"])
-        app.include_router(admin_audit.router, tags=["admin-audit"])
-        app.include_router(admin_payments.router, tags=["admin-payments"])
-        app.include_router(admin_payments_page.router, tags=["admin-payments-page"])  # NEW: Payment approval routes
-    else:
+        try:
+            app.include_router(admin_auth.router, tags=["admin-auth"])
+            app.include_router(admin_doctors.router, tags=["admin-doctors"])
+            app.include_router(admin_tools.router, tags=["admin-tools"])
+            app.include_router(admin_audit.router, tags=["admin-audit"])
+            app.include_router(admin_payments.router, tags=["admin-payments"])
+            app.include_router(admin_payments_page.router, tags=["admin-payments-page"])
+            app.include_router(admin_test.router, tags=["admin-test"])  # NEW
+        except Exception as router_error: # Fallback for Router Registration Errors
+            print(f"⚠️ Admin UI router registration failed: {router_error} - activating fallback debugger")
+            admin_loaded = False # Mark as not loaded due to registration error
+            admin_import_error = str(router_error) # Store the error
+    
+    if not admin_loaded: # This block now handles both import and registration errors
         # Fallback for Import Errors - Prevents startup crash
         print("⚠️ Admin UI disabled due to import error - activating fallback debugger")
         templates = Jinja2Templates(directory="app/templates")
