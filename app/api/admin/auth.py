@@ -288,11 +288,13 @@ async def dashboard(
     recent_events = []  # Empty for now until migration is run
     
     # NEW: Get pending payment receipts
-    pending_payments = db.query(Appointment).filter(
-        Appointment.payment_status.in_(['pending', 'verified'])
-    ).order_by(
-        Appointment.receipt_uploaded_at.desc()
-    ).limit(10).all()
+    # TEMPORARILY DISABLED - Debugging payment query issues
+    # pending_payments = db.query(Appointment).filter(
+    #     Appointment.payment_status.in_(['pending', 'verified'])
+    # ).order_by(
+    #     Appointment.receipt_uploaded_at.desc()
+    # ).limit(10).all()
+    pending_payments = []  # Disabled temporarily
     
     return templates.TemplateResponse(
         "dashboard.html",
@@ -305,6 +307,6 @@ async def dashboard(
                 "active_doctors": active_doctors
             },
             "recent_events": recent_events,
-            "pending_payments": pending_payments  # NEW
+            "pending_payments": pending_payments  # Empty list for now
         }
     )
