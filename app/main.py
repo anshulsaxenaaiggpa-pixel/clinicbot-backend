@@ -101,13 +101,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Session Middleware (Required for Admin UI - Railway HTTPS config)
+# Session Middleware (Required for Admin UI - Railway proxy setup)
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.SESSION_SECRET_KEY,
     max_age=1800,  # 30 minutes
     same_site="lax",  # Allow navigation between routes (not "strict")
-    https_only=True  # Railway serves over HTTPS
+    https_only=False  # Railway proxy terminates HTTPS → HTTP to app
 )
 
 # Mount static files for logo and assets
@@ -241,7 +241,7 @@ from app.api import onboarding
 admin_import_error = None
 admin_loaded = False
 try:
-    from app.api.admin import doctors as admin_doctors, tools as admin_tools, audit as admin_audit, auth as admin_auth
+    from app.api.admin import doctors as admin_doctors, tools as admin_tools, audit as admin_audit, auth as admin_auth, payments as admin_payments
     admin_loaded = True
 except Exception as e:
     print(f"❌ Admin UI Import Failed: {e}")
@@ -255,6 +255,7 @@ if settings.ADMIN_UI_ENABLED:
         app.include_router(admin_doctors.router, tags=["admin-doctors"])
         app.include_router(admin_tools.router, tags=["admin-tools"])
         app.include_router(admin_audit.router, tags=["admin-audit"])
+        app.include_router(admin_payments.router, tags=["admin-payments"])  # NEW: Payment approval routes
     else:
         # Fallback for Import Errors - Prevents startup crash
         print("⚠️ Admin UI disabled due to import error - activating fallback debugger")

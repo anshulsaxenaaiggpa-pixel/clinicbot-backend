@@ -79,6 +79,8 @@ def _parse_twilio_message(body: Dict[str, Any]) -> Dict[str, Any]:
         "body": body.get("Body", ""),
         "timestamp": datetime.utcnow().isoformat(),
         "media_url": body.get("MediaUrl0"),  # For images/PDFs
+        "media_content_type": body.get("MediaContentType0"),
+        "num_media": int(body.get("NumMedia", 0)),
         "profile_name": body.get("ProfileName")
     }
 
@@ -91,13 +93,23 @@ def _parse_meta_message(body: Dict[str, Any]) -> Dict[str, Any]:
         value = change["value"]
         message = value["messages"][0]
         
+        # Check for image message
+        media_url = None
+        media_type = None
+        if "image" in message:
+            media_url = message["image"].get("id")  # Meta uses media ID
+            media_type = "image"
+        
         return {
             "provider": "meta",
             "from": message["from"],
             "to": value["metadata"]["display_phone_number"],
             "message_id": message["id"],
+            "message_type": message.get("type", "text"),
             "body": message.get("text", {}).get("body", ""),
             "timestamp": message["timestamp"],
+            "media_url": media_url,
+            "media_type": media_type,
             "contact_name": value.get("contacts", [{}])[0].get("profile", {}).get("name")
         }
     except (KeyError, IndexError) as e:

@@ -186,8 +186,8 @@ class SessionManager:
         return {
             "key": self.COOKIE_NAME,
             "httponly": True,
-            "secure": True,  # Railway uses HTTPS - cookies must be secure
-            "samesite": "lax",  # Changed from "strict" to allow redirects between routes
+            "secure": False,  # Railway uses HTTPS proxy → HTTP to app (set False for compatibility)
+            "samesite": "lax",  # Allow navigation between routes (dashboard → QR/Doctors)
             "max_age": self.SESSION_TTL_SECONDS
         }
 
