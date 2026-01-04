@@ -271,21 +271,28 @@ async def dashboard(
     admin_user: AdminUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    """Admin dashboard with overview stats."""
+    """Admin dashboard with overview stats and pending payments."""
     from app.models.doctor import Doctor
     from app.models.audit_log import AuditLog
+    from app.models.appointment import Appointment
     
     # Get stats
     total_doctors = db.query(Doctor).count()
     active_doctors = db.query(Doctor).filter(Doctor.is_active == True).count()
 
-    
     # Recent audit events - TEMPORARILY DISABLED due to schema mismatch
     # TODO: Run alembic migration to fix audit_log table schema
     # recent_events = db.query(AuditLog).order_by(
     #     AuditLog.timestamp.desc()
     # ).limit(10).all()
     recent_events = []  # Empty for now until migration is run
+    
+    # NEW: Get pending payment receipts
+    pending_payments = db.query(Appointment).filter(
+        Appointment.payment_status.in_(['pending', 'verified'])
+    ).order_by(
+        Appointment.receipt_uploaded_at.desc()
+    ).limit(10).all()
     
     return templates.TemplateResponse(
         "dashboard.html",
@@ -297,6 +304,7 @@ async def dashboard(
                 "total_doctors": total_doctors,
                 "active_doctors": active_doctors
             },
-            "recent_events": recent_events
+            "recent_events": recent_events,
+            "pending_payments": pending_payments  # NEW
         }
     )

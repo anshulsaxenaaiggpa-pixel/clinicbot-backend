@@ -4,6 +4,25 @@
 <head>
     <title>CuraSlot Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .receipt-thumbnail {
+            max-width: 100px;
+            max-height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .payment-card {
+            border-left: 4px solid #ffc107;
+            background: #fff9e6;
+        }
+
+        .payment-card.verified {
+            border-left-color: #28a745;
+            background: #e8f5e9;
+        }
+    </style>
 </head>
 
 <body class="bg-light p-5">
@@ -13,39 +32,83 @@
         <div class="row mb-5">
             <div class="col-md-3">
                 <div class="card bg-success text-white text-center p-4 rounded-3 shadow">
-                    <h2>14</h2>
-                    <p>Today's Appointments</p>
+                    <h2>{{ stats.active_doctors }}</h2>
+                    <p>Active Doctors</p>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card bg-info text-white text-center p-4 rounded-3 shadow">
-                    <h2>₹7,200</h2>
-                    <p>Monthly Revenue</p>
+                <div class="card bg-warning text-white text-center p-4 rounded-3 shadow">
+                    <h2>{{ pending_payments|length }}</h2>
+                    <p>Pending Payments</p>
                 </div>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-md-8">
-                <h3>Recent Bookings</h3>
+        <!-- NEW: Pending Payments Section -->
+        {% if pending_payments %}
+        <div class="row mb-4" id="payments">
+            <div class="col-12">
+                <h3>💰 Pending Payments</h3>
                 <div class="table-responsive">
-                    <table class="table table-striped">
+                    <table class="table table-hover">
                         <thead>
                             <tr>
                                 <th>Patient</th>
                                 <th>Time</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Receipt</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Pk</td>
-                                <td>10:00 AM</td>
-                                <td>✅ Confirmed</td>
+                            {% for appt in pending_payments %}
+                            <tr class="payment-card {% if appt.payment_status == 'verified' %}verified{% endif %}">
+                                <td><strong>{{ appt.patient_name or appt.patient_phone[-4:] }}</strong></td>
+                                <td>{{ appt.start_utc_ts.strftime('%b %d, %I:%M %p') if appt.start_utc_ts else 'N/A' }}
+                                </td>
+                                <td>₹{{ appt.payment_amount or appt.amount_paid }}</td>
+                                <td>{{ appt.payment_method or 'Unknown' }}</td>
+                                <td>
+                                    {% if appt.payment_receipt_url %}
+                                    <a href="{{ appt.payment_receipt_url }}" target="_blank">
+                                        <img src="{{ appt.payment_receipt_url }}" class="receipt-thumbnail"
+                                            alt="Receipt">
+                                    </a>
+                                    {% else %}
+                                    <em>No receipt</em>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if appt.payment_status == 'verified' %}
+                                    <span class="badge bg-success">✓ Verified</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">⏳ Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST" action="/admin/payments/{{ appt.id }}/approve"
+                                        style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-success">✅ Approve</button>
+                                    </form>
+                                    <form method="POST" action="/admin/payments/{{ appt.id }}/reject"
+                                        style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger">❌ Reject</button>
+                                    </form>
+                                </td>
                             </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-md-8">
+                <h3>Quick Actions</h3>
             </div>
             <div class="col-md-4">
                 <!-- Corrected Link to Actual QR Tool Route -->
