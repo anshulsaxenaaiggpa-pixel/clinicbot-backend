@@ -40,7 +40,10 @@ async def login_page(request: Request):
     
     return templates.TemplateResponse(
         "login.html",
-        {"request": request}
+        {
+            "request": request,
+            "csrf_token": request.state.csrf_token if hasattr(request.state, "csrf_token") else ""
+        }
     )
 
 
