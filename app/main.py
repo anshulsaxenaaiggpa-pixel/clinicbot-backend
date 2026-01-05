@@ -278,17 +278,37 @@ except Exception as e:
 
 # Admin UI routes (requires SESSION_SECRET_KEY and ADMIN_UI_ENABLED=True)
 if settings.ADMIN_UI_ENABLED:
+    print(f"🔧 ADMIN_UI_ENABLED=True, admin_loaded={admin_loaded}")
     if admin_loaded:
         try:
+            print("📝 Registering admin routers...")
+            print(f"  - admin_auth routes: {[r.path for r in admin_auth.router.routes]}")
             app.include_router(admin_auth.router, tags=["admin-auth"])
+            print("  ✅ admin_auth registered")
+            
+            print(f"  - admin_doctors routes: {[r.path for r in admin_doctors.router.routes]}")
             app.include_router(admin_doctors.router, tags=["admin-doctors"])
+            print("  ✅ admin_doctors registered")
+            
             app.include_router(admin_tools.router, tags=["admin-tools"])
+            print("  ✅ admin_tools registered")
+            
             app.include_router(admin_audit.router, tags=["admin-audit"])
+            print("  ✅ admin_audit registered")
+            
             app.include_router(admin_payments.router, tags=["admin-payments"])
+            print("  ✅ admin_payments registered")
+            
             app.include_router(admin_payments_page.router, tags=["admin-payments-page"])
+            print("  ✅ admin_payments_page registered")
+            
             app.include_router(admin_test.router, tags=["admin-test"])  # NEW
+            print("  ✅ admin_test registered")
+            print("✅ All admin routers registered successfully!")
         except Exception as router_error: # Fallback for Router Registration Errors
             print(f"⚠️ Admin UI router registration failed: {router_error} - activating fallback debugger")
+            import traceback
+            traceback.print_exc()
             admin_loaded = False # Mark as not loaded due to registration error
             admin_import_error = str(router_error) # Store the error
     
