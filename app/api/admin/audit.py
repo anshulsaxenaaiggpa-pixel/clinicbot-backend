@@ -127,8 +127,8 @@ async def export_audit_logs_csv(
             log.action,
             log.actor_type,
             log.actor_reference,
-            str(log.old_state) if log.old_state else "",
-            ip_address
+            str(log.new_state) if log.new_state else "",
+            log.ip_address or ""
         ])
     
     # Prepare response

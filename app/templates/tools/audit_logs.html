@@ -82,23 +82,22 @@
                         {% for log in logs %}
                         <tr>
                             <td>
-                                <small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                <small>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                             </td>
                             <td>
-                                <span class="badge bg-secondary">{{ log.event_type }}</span>
+                                <span class="badge bg-secondary">{{ log.action }}</span>
                             </td>
                             <td>
                                 <small>
-                                    {{ log.actor }}<br>
-                                    <span class="font-monospace text-muted">{{ log.actor_id[:16] }}...</span>
+                                    {{ log.actor_type }}<br>
+                                    <span class="font-monospace text-muted">{{ log.actor_reference[:16] if
+                                        log.actor_reference else 'N/A' }}</span>
                                 </small>
                             </td>
                             <td>
                                 <small class="font-monospace">
-                                    {% if log.metadata %}
-                                    {% for key, value in log.metadata.items() %}
-                                    <strong>{{ key }}:</strong> {{ value }}<br>
-                                    {% endfor %}
+                                    {% if log.new_state %}
+                                    {{ log.new_state|string|truncate(200) }}
                                     {% endif %}
                                 </small>
                             </td>
