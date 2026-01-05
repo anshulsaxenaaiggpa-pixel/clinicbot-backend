@@ -6,6 +6,10 @@ from typing import Optional
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
+    # ===== TEMPORARY DEBUG MODE FOR TROUBLESHOOTING =====
+    DEBUG: bool = True  # FORCED TO TRUE - REVERT AFTER FIXING
+    # ====================================================
+    
     # Database
     DATABASE_URL: Optional[str] = "sqlite:///./clinicbot.db"
     REDIS_URL: Optional[str] = None

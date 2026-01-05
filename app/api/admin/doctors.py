@@ -24,7 +24,7 @@ router = APIRouter(prefix="/admin/doctors", tags=["admin-doctors"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent.parent / "templates"))
 
 
-@router.get("", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
 async def list_doctors(
     request: Request,
     page: int = 1,
@@ -32,39 +32,72 @@ async def list_doctors(
     admin_user: AdminUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    """List all doctors with pagination and search."""
-    page_size = 50
-    offset = (page - 1) * page_size
-    
-    # Base query
-    query = db.query(Doctor).filter(Doctor.is_active == True)
-    
-    # Search filter
-    if search:
-        query = query.filter(
-            (Doctor.full_name.ilike(f"%{search}%")) |
-            (Doctor.city.ilike(f"%{search}%")) |
-            (Doctor.specialty.ilike(f"%{search}%"))
-        )
-    
-    # Paginate
-    total = query.count()
-    doctors = query.order_by(Doctor.created_at.desc()).offset(offset).limit(page_size).all()
-    
-    total_pages = (total + page_size - 1) // page_size
-    
-    return templates.TemplateResponse(
-        "doctors/list.html",
-        {
-            "request": request,
-            "admin_user": admin_user,
-            "csrf_token": request.state.csrf_token,
-            "doctors": doctors,
-            "page": page,
-            "total_pages": total_pages,
-            "search": search or ""
-        }
-    )
+    """List all doctors with pagination and search - SIMPLIFIED VERSION."""
+    try:
+        # Basic doctor query
+        query = db.query(Doctor).filter(Doctor.is_active == True)
+        
+        if search:
+            search_filter = f"%{search}%"
+            query = query.filter(
+                (Doctor.full_name.ilike(search_filter)) |
+                (Doctor.city.ilike(search_filter)) |
+                (Doctor.specialty.ilike(search_filter))
+            )
+        
+        doctors = query.order_by(Doctor.full_name).all()
+        
+        # Generate simple HTML table
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Doctors - CuraSlot Admin</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body class="p-4">
+            <div class="container">
+                <h1>👨‍⚕️ Doctors</h1>
+                <p>Logged in as: {admin_user.email}</p>
+                <p><a href="/admin/dashboard">← Back to Dashboard</a></p>
+                
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Specialty</th>
+                            <th>City</th>
+                            <th>WhatsApp</th>
+                            <th>Searchable</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+        
+        for doctor in doctors:
+            searchable = "✅ Yes" if doctor.is_searchable else "❌ Private"
+            html += f"""
+                        <tr>
+                            <td>{doctor.full_name}</td>
+                            <td>{doctor.specialty}</td>
+                            <td>{doctor.city}</td>
+                            <td>{doctor.whatsapp_number}</td>
+                            <td>{searchable}</td>
+                        </tr>
+            """
+        
+        html += """
+                    </tbody>
+                </table>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(content=html)
+        
+    except Exception as e:
+        return HTMLResponse(content=f"<h1>Error loading doctors</h1><p>{str(e)}</p>", status_code=500)
 
 
 @router.get("/new", response_class=HTMLResponse)
