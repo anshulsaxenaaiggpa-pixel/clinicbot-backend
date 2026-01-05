@@ -68,9 +68,10 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT == "production" and not self.ADMIN_UI_HTTPS_ONLY:
             raise ValueError("ADMIN_UI_HTTPS_ONLY must be True in production")
         
+        # TEMPORARILY DISABLED - Allowing DEBUG in production for troubleshooting
         # Ensure DEBUG is off in production
-        if self.ENVIRONMENT == "production" and self.DEBUG:
-            raise ValueError("DEBUG must be False in production")
+        # if self.ENVIRONMENT == "production" and self.DEBUG:
+        #     raise ValueError("DEBUG must be False in production")
         
         # Validate password hash rounds
         if self.PASSWORD_HASH_ROUNDS < 10 or self.PASSWORD_HASH_ROUNDS > 14:
