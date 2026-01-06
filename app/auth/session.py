@@ -30,10 +30,27 @@ class SessionManager:
     
     def __init__(self):
         """Initialize session manager with Redis connection."""
-        self.redis = StrictRedis.from_url(
-            settings.REDIS_URL,
-            decode_responses=True
-        )
+        try:
+            print(f"🔧 SessionManager: Initializing with REDIS_URL: {settings.REDIS_URL[:30]}..." if settings.REDIS_URL else "🔧 SessionManager: REDIS_URL not set")
+            
+            self.redis = StrictRedis.from_url(
+                settings.REDIS_URL,
+                decode_responses=True
+            )
+            
+            # Test connection
+            self.redis.ping()
+            print("✅ SessionManager: Redis connection successful")
+            
+        except Exception as e:
+            print(f"\n{'='*80}")
+            print(f"❌ CRITICAL: SessionManager Redis connection FAILED")
+            print(f"{'='*80}")
+            print(f"Error: {str(e)}")
+            print(f"REDIS_URL: {settings.REDIS_URL}")
+            print(f"{'='*80}\n")
+            raise
+        
         self.serializer = URLSafeTimedSerializer(
             settings.SESSION_SECRET_KEY,
             salt="admin-session"

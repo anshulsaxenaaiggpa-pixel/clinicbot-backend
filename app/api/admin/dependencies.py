@@ -40,47 +40,101 @@ async def require_admin(
     Validates session cookie and returns authenticated admin user.
     Raises 401 if not authenticated (triggers redirect to login in browser).
     """
-    # Get session cookie
-    session_token = request.cookies.get(session_manager.COOKIE_NAME)
+    try:
+        # Get session cookie
+        session_token = request.cookies.get(session_manager.COOKIE_NAME)
+        
+        if not session_token:
+            print("❌ AUTH: No session token found in cookies")
+            # Not authenticated - raise exception that will be caught by frontend
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"Location": "/admin/login"}
+            )
+        
+        # Validate session
+        client_ip = get_client_ip(request)
+        print(f"🔍 AUTH: Validating session for IP: {client_ip}")
+        session_data = session_manager.validate_session(session_token, client_ip)
+        
+        if not session_data:
+            print("❌ AUTH: Session validation failed (invalid/expired)")
+            # Invalid/expired session
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired",
+                headers={"Location": "/admin/login"}
+            )
+        
+        print(f"✅ AUTH: Session validated for user_id: {session_data.get('user_id')}")
+        
+        # Retrieve admin user
+        admin_user = db.query(AdminUser).filter(
+            AdminUser.id == session_data["user_id"]
+        ).first()
+        
+        if not admin_user or not admin_user.is_active:
+            print(f"❌ AUTH: User not found or inactive: {session_data.get('user_id')}")
+            # User not found or inactive
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found or inactive",
+                headers={"Location": "/admin/login"}
+            )
+        
+        print(f"✅ AUTH: Admin user loaded: {admin_user.email}")
+        
+        # Store session data in request state for templates
+        request.state.admin_user = admin_user
+        request.state.csrf_token = session_data.get("csrf_token", "")
+        
+        return admin_user
     
-    if not session_token:
-        # Not authenticated - raise exception that will be caught by frontend
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"Location": "/admin/login"}
+    except HTTPException:
+        # Re-raise HTTP exceptions (expected auth failures)
+        raise
+    except Exception as e:
+        # Catch ALL other errors and log them
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"\n{'='*80}")
+        print(f"❌ CRITICAL: require_admin CRASHED")
+        print(f"{'='*80}")
+        print(f"Error: {str(e)}")
+        print(f"Error Type: {type(e).__name__}")
+        print(f"\nFull Traceback:")
+        print(error_trace)
+        print(f"{'='*80}\n")
+        
+        # Return detailed error as HTTP response
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head><title>Authentication Error</title></head>
+                <body style="font-family: monospace; padding: 2rem;">
+                    <h1 style="color: red;">❌ Authentication System Error</h1>
+                    <p>The authentication system encountered an unexpected error.</p>
+                    <div style="background: #f5f5f5; padding: 1rem; border-radius: 5px; overflow: auto;">
+                        <strong>Error:</strong> {str(e)}<br>
+                        <strong>Type:</strong> {type(e).__name__}<br><br>
+                        <strong>Full Traceback:</strong>
+                        <pre>{error_trace}</pre>
+                    </div>
+                    <br>
+                    <p><strong>Common causes:</strong></p>
+                    <ul>
+                        <li>Redis connection failure (check REDIS_URL)</li>
+                        <li>Database connection issues</li>
+                        <li>Session manager initialization error</li>
+                    </ul>
+                    <a href="/admin/login">Try logging in again</a>
+                </body>
+            </html>
+            """,
+            status_code=500
         )
-    
-    # Validate session
-    client_ip = get_client_ip(request)
-    session_data = session_manager.validate_session(session_token, client_ip)
-    
-    if not session_data:
-        # Invalid/expired session
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired",
-            headers={"Location": "/admin/login"}
-        )
-    
-    # Retrieve admin user
-    admin_user = db.query(AdminUser).filter(
-        AdminUser.id == session_data["user_id"]
-    ).first()
-    
-    if not admin_user or not admin_user.is_active:
-        # User not found or inactive
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-            headers={"Location": "/admin/login"}
-        )
-    
-    # Store session data in request state for templates
-    request.state.admin_user = admin_user
-    request.state.csrf_token = session_data.get("csrf_token", "")
-    
-    return admin_user
 
 
 def require_role(required_role: AdminRole):
