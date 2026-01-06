@@ -23,10 +23,9 @@
                             <select class="form-select" id="doctorSelect" required onchange="generateQR()">
                                 <option value="">-- Select Doctor --</option>
                                 {% for doctor in doctors %}
-                                <option value="{{ doctor.id }}" data-name="{{ doctor.full_name }}"
-                                    data-specialty="{{ doctor.specialty }}" data-city="{{ doctor.city }}"
-                                    data-phone="{{ doctor.whatsapp_number }}">
-                                    {{ doctor.full_name }} - {{ doctor.specialty }} ({{ doctor.city }})
+                                <option value="{{ doctor.id }}" data-name="{{ doctor.name }}"
+                                    data-specialization="{{ doctor.specialization }}">
+                                    {{ doctor.name }} - {{ doctor.specialization or 'General' }}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -80,13 +79,12 @@
         }
 
         const doctorName = selectedOption.dataset.name;
-        const specialty = selectedOption.dataset.specialty;
-        const city = selectedOption.dataset.city;
-        const phone = selectedOption.dataset.phone;
+        const specialization = selectedOption.dataset.specialization;
 
-        // Create WhatsApp link
-        const message = encodeURIComponent(`Hi! I'd like to book an appointment with ${doctorName}`);
-        const whatsappLink = `https://wa.me/${phone}?text=${message}`;
+        // Create placeholder WhatsApp link (would need clinic WhatsApp number)
+        const message = encodeURIComponent(`Hi! I'd like to book an appointment with Dr. ${doctorName}`);
+        // Note: Using placeholder number - would need to get from clinic
+        const whatsappLink = `https://wa.me/?text=${message}`;
 
         // Clear previous QR code
         document.getElementById('qrcode').innerHTML = '';
@@ -103,9 +101,8 @@
 
         // Update share message
         document.getElementById('shareMessage').value =
-            `Book an appointment with ${doctorName}\n\n` +
-            `Specialty: ${specialty}\n` +
-            `City: ${city}\n\n` +
+            `Book an appointment with Dr. ${doctorName}\n\n` +
+            `Specialization: ${specialization || 'General Practice'}\n\n` +
             `Click here to book via WhatsApp:\n${whatsappLink}\n\n` +
             `Or scan the QR code to connect instantly!`;
 
