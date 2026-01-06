@@ -78,8 +78,38 @@ async def run_config_validation():
         import traceback
         traceback.print_exc()
     
-    # ===== AUTO-MIGRATION ON STARTUP =====
-    print("=" * 80)
+    # ===== ENSURE DOCTOR COLUMNS EXIST (bypass broken migration) =====
+    print("🔧 Ensuring doctor table has required columns...")
+    try:
+        from app.db.database import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            # Add upi_id if missing
+            try:
+                conn.execute(text("""
+                    ALTER TABLE doctors ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100)
+                """))
+                conn.commit()
+                print("✅ Ensured upi_id column exists")
+            except Exception as e:
+                print(f"⚠️ upi_id column: {e}")
+            
+            # Add status if missing
+            try:
+                conn.execute(text("""
+                    ALTER TABLE doctors ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'
+                """))
+                conn.commit()
+                print("✅ Ensured status column exists")
+            except Exception as e:
+                print(f"⚠️ status column: {e}")
+                
+        print("✅ Doctor columns verified\n")
+    except Exception as e:
+        print(f"⚠️ Could not verify doctor columns: {e}\n")
+    # ===== END COLUMN CHECK =====
+    
+    # ===== AUTO-RUN ALEMBIC MIGRATIONS =====
     print("🔄 RUNNING DATABASE MIGRATIONS")
     print("=" * 80)
     try:
@@ -88,6 +118,7 @@ async def run_config_validation():
         
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
+        print("=" * 80)
         print("✅ Database migrations completed successfully")
     except Exception as e:
         print(f"❌ Migration failed: {e}")
