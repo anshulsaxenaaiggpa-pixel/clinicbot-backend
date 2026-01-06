@@ -31,8 +31,7 @@ async def qr_generator_page(
     try:
         # Get all active doctors
         doctors = db.query(Doctor).filter(
-            Doctor.is_active == True,
-            Doctor.whatsapp_number.isnot(None)
+            Doctor.is_active == True
         ).order_by(Doctor.name).all()
         
         return templates.TemplateResponse(
