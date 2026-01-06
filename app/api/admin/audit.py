@@ -58,10 +58,10 @@ async def _audit_logs_impl(
     
     # Apply filters
     if event_type:
-        query = query.filter(AuditLog.action == event_type)
+        query = query.filter(AuditLog.event_type == event_type)
     
     if actor_id:
-        query = query.filter(AuditLog.actor_reference == actor_id)
+        query = query.filter(AuditLog.actor_id == actor_id)
     
     # Get total count
     total = query.count()
@@ -72,7 +72,7 @@ async def _audit_logs_impl(
     total_pages = (total + page_size - 1) // page_size
     
     # Get unique event types for filter dropdown
-    event_types = db.query(AuditLog.action).distinct().order_by(AuditLog.action).all()
+    event_types = db.query(AuditLog.event_type).distinct().order_by(AuditLog.event_type).all()
     event_types = [et[0] for et in event_types]
     
     return templates.TemplateResponse(
@@ -108,10 +108,10 @@ async def export_audit_logs_csv(
     
     # Apply filters
     if event_type:
-        query = query.filter(AuditLog.action == event_type)
+        query = query.filter(AuditLog.event_type == event_type)
     
     if actor_id:
-        query = query.filter(AuditLog.actor_reference == actor_id)
+        query = query.filter(AuditLog.actor_id == actor_id)
     
     # Get logs (limit to 10,000 for performance)
     logs = query.order_by(AuditLog.timestamp.desc()).limit(10000).all()
@@ -124,26 +124,31 @@ async def export_audit_logs_csv(
     writer.writerow([
         "Timestamp",
         "Event Type",
-        "Actor Type",
+        "Actor",
         "Actor ID",
-        "Metadata",
-        "IP Address"
+        "Metadata"
     ])
     
     # Write rows
     for log in logs:
-        # Extract IP address from metadata if present
-        ip_address = log.ip_address or ""
-        if not ip_address and log.new_state and isinstance(log.new_state, dict):
-            ip_address = log.new_state.get("ip_address", "")
+        import json
+        # Parse event_metadata if it's a JSON string
+        metadata_str = ""
+        if log.event_metadata:
+            try:
+                if isinstance(log.event_metadata, str):
+                    metadata_str = log.event_metadata
+                else:
+                    metadata_str = json.dumps(log.event_metadata)
+            except:
+                metadata_str = str(log.event_metadata)
         
         writer.writerow([
             log.timestamp.isoformat(),
-            log.action,
-            log.actor_type,
-            log.actor_reference,
-            str(log.new_state) if log.new_state else "",
-            log.ip_address or ""
+            log.event_type,
+            log.actor,
+            log.actor_id or "",
+            metadata_str
         ])
     
     # Prepare response
