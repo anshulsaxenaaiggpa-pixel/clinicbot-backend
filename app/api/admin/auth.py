@@ -274,13 +274,38 @@ async def dashboard(
     admin_user: AdminUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    """Admin dashboard - MINIMAL VERSION."""
+    """Admin dashboard with revenue metrics."""
     try:
+        from app.models.doctor import Doctor
+        from sqlalchemy import func
+        
+        # Calculate revenue metrics
+        total_doctors = db.query(func.count(Doctor.id)).filter(Doctor.is_active == True).scalar() or 0
+        active_doctors = db.query(func.count(Doctor.id)).filter(
+            Doctor.is_active == True,
+            Doctor.status == 'active'
+        ).scalar() or 0
+        trial_doctors = db.query(func.count(Doctor.id)).filter(
+            Doctor.is_active == True,
+            Doctor.status == 'trial'
+        ).scalar() or 0
+        
+        # MRR = Active doctors × ₹99
+        mrr = active_doctors * 99
+        pipeline = trial_doctors * 99
+        pending_payments = 0
+        
         return templates.TemplateResponse(
             "admin_dashboard_minimal.html",
             {
                 "request": request,
-                "admin_user": admin_user
+                "admin_user": admin_user,
+                "total_doctors": total_doctors,
+                "active_doctors": active_doctors,
+                "trial_doctors": trial_doctors,
+                "mrr": mrr,
+                "pipeline": pipeline,
+                "pending_payments": pending_payments
             }
         )
     except Exception as e:
