@@ -33,6 +33,21 @@ async def audit_logs_page(
     admin_user: AdminUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
+    try:
+        return await _audit_logs_impl(request, page, event_type, actor_id, days, admin_user, db)
+    except Exception as e:
+        import traceback
+        return HTMLResponse(content=f"<h1>Audit Logs Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
+
+async def _audit_logs_impl(
+    request: Request,
+    page: int,
+    event_type: Optional[str],
+    actor_id: Optional[str],
+    days: int,
+    admin_user: AdminUser,
+    db: Session
+):
     """View audit logs with filters."""
     page_size = 100
     offset = (page - 1) * page_size

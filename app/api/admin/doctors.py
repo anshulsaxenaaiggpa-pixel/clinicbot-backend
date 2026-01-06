@@ -97,7 +97,12 @@ async def list_doctors(
         return HTMLResponse(content=html)
         
     except Exception as e:
-        return HTMLResponse(content=f"<h1>Error loading doctors</h1><p>{str(e)}</p>", status_code=500)
+        import traceback
+        error_detail = traceback.format_exc()
+        return HTMLResponse(
+            content=f"<h1>Error loading doctors</h1><pre>{error_detail}</pre>", 
+            status_code=500
+        )
 
 
 @router.get("/new", response_class=HTMLResponse)

@@ -28,21 +28,25 @@ async def qr_generator_page(
     db: Session = Depends(get_db)
 ):
     """QR code and link generation tool."""
-    # Get all active doctors
-    doctors = db.query(Doctor).filter(
-        Doctor.is_active == True,
-        Doctor.whatsapp_number.isnot(None)
-    ).order_by(Doctor.full_name).all()
-    
-    return templates.TemplateResponse(
-        "tools/qr_generator.html",
-        {
-            "request": request,
-            "admin_user": admin_user,
-            "csrf_token": request.state.csrf_token,
-            "doctors": doctors
-        }
-    )
+    try:
+        # Get all active doctors
+        doctors = db.query(Doctor).filter(
+            Doctor.is_active == True,
+            Doctor.whatsapp_number.isnot(None)
+        ).order_by(Doctor.full_name).all()
+        
+        return templates.TemplateResponse(
+            "tools/qr_generator.html",
+            {
+                "request": request,
+                "admin_user": admin_user,
+                "csrf_token": request.state.csrf_token,
+                "doctors": doctors
+            }
+        )
+    except Exception as e:
+        import traceback
+        return HTMLResponse(content=f"<h1>QR Generator Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
 
 
 @router.get("/qr/{doctor_id}", response_class=HTMLResponse)
