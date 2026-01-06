@@ -80,7 +80,7 @@ async def _audit_logs_impl(
         {
             "request": request,
             "admin_user": admin_user,
-            "csrf_token": request.state.csrf_token,
+            "csrf_token": getattr(request.state, 'csrf_token', ''),
             "logs": logs,
             "page": page,
             "total_pages": total_pages,
