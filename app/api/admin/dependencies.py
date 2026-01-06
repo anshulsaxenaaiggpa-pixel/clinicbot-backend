@@ -107,33 +107,10 @@ async def require_admin(
         print(error_trace)
         print(f"{'='*80}\n")
         
-        # Return detailed error as HTTP response
-        from fastapi.responses import HTMLResponse
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head><title>Authentication Error</title></head>
-                <body style="font-family: monospace; padding: 2rem;">
-                    <h1 style="color: red;">❌ Authentication System Error</h1>
-                    <p>The authentication system encountered an unexpected error.</p>
-                    <div style="background: #f5f5f5; padding: 1rem; border-radius: 5px; overflow: auto;">
-                        <strong>Error:</strong> {str(e)}<br>
-                        <strong>Type:</strong> {type(e).__name__}<br><br>
-                        <strong>Full Traceback:</strong>
-                        <pre>{error_trace}</pre>
-                    </div>
-                    <br>
-                    <p><strong>Common causes:</strong></p>
-                    <ul>
-                        <li>Redis connection failure (check REDIS_URL)</li>
-                        <li>Database connection issues</li>
-                        <li>Session manager initialization error</li>
-                    </ul>
-                    <a href="/admin/login">Try logging in again</a>
-                </body>
-            </html>
-            """,
-            status_code=500
+        # Raise HTTPException with error details (dependencies can't return responses)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Authentication system error: {type(e).__name__}: {str(e)}"
         )
 
 

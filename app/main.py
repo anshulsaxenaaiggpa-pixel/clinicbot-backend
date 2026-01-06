@@ -3,13 +3,27 @@
 import app.db.base  # noqa - Must be first to register SQLAlchemy models
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 import traceback
+import logging
+import sys
 from app.config import settings
+
+# Configure logging to flush immediately
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s',
+    stream=sys.stdout,
+    force=True
+)
+logger = logging.getLogger(__name__)
+
+# Force stdout to be unbuffered
+sys.stdout.reconfigure(line_buffering=True)
 
 # MANDATORY: Import startup validator for security checks
 from app.startup_validator import startup_validator
@@ -144,20 +158,54 @@ app.add_middleware(
     https_only=False  # Railway proxy terminates HTTPS → HTTP to app
 )
 
-# Custom exception handler for 401 errors - redirect to login for browsers
+# GLOBAL EXCEPTION HANDLERS
 from fastapi.exceptions import HTTPException as StarletteHTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPExceptionBase
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch ALL unhandled exceptions and log them"""
+    error_trace = traceback.format_exc()
+    
+    # Force immediate log output
+    logger.error("=" * 80)
+    logger.error("🔥 UNHANDLED EXCEPTION")
+    logger.error("=" * 80)
+    logger.error(f"Path: {request.url.path}")
+    logger.error(f"Method: {request.method}")
+    logger.error(f"Error Type: {type(exc).__name__}")
+    logger.error(f"Error: {str(exc)}")
+    logger.error("\nFull Traceback:")
+    logger.error(error_trace)
+    logger.error("=" * 80)
+    sys.stdout.flush()
+    
+    # Return detailed error to browser
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "type": type(exc).__name__,
+            "detail": str(exc),
+            "path": request.url.path,
+            "traceback": error_trace.split("\n")
+        }
+    )
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle 401 errors by redirecting to login for browser requests"""
+    """Handle HTTP exceptions (401, 403, 404, etc.)"""
+    logger.info(f"HTTP {exc.status_code}: {request.url.path} - {exc.detail}")
+    
     if exc.status_code == 401:
         # Check if request expects HTML (browser)
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
             # Redirect to login for browsers
+            from fastapi.responses import RedirectResponse
             return RedirectResponse(url="/admin/login", status_code=302)
-    # For API requests or other status codes, return default JSON response
-    from fastapi.responses import JSONResponse
+    
+    # For API requests or other status codes, return JSON response
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail}
