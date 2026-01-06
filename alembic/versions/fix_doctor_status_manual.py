@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'fix_doctor_status'
-down_revision = '54caccb6b28b'
+down_revision = 'bbb95cfbd844'  # Points to add_payment_receipt_fields
 branch_labels = None
 depends_on = None
 
