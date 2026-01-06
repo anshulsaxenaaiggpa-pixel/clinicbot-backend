@@ -128,6 +128,25 @@ app.add_middleware(
     https_only=False  # Railway proxy terminates HTTPS → HTTP to app
 )
 
+# Custom exception handler for 401 errors - redirect to login for browsers
+from fastapi.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Handle 401 errors by redirecting to login for browser requests"""
+    if exc.status_code == 401:
+        # Check if request expects HTML (browser)
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            # Redirect to login for browsers
+            return RedirectResponse(url="/admin/login", status_code=302)
+    # For API requests or other status codes, return default JSON response
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
 # Mount static files for logo and assets
 from pathlib import Path
 static_dir = Path(__file__).parent / "static"
