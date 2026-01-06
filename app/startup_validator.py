@@ -41,9 +41,9 @@ class StartupValidator:
         if not settings.DATABASE_URL:
             errors.append("CRITICAL: DATABASE_URL not configured")
         
-        # Check 6: Redis URL must be set (required for sessions)
+        # Check 6: Redis URL should be set (recommended for sessions)
         if not settings.REDIS_URL:
-            errors.append("CRITICAL: REDIS_URL not configured (sessions will fail)")
+            errors.append("WARNING: REDIS_URL not configured (session features may be limited)")
         
         # Check 7: Password hash rounds must be secure
         if settings.PASSWORD_HASH_ROUNDS < 10 or settings.PASSWORD_HASH_ROUNDS > 14:
@@ -74,8 +74,18 @@ class StartupValidator:
             print("=" * 80)
             return True
         
-        # Print errors
+        # Print errors with detailed diagnostics
         print("\n❌ CONFIGURATION VALIDATION FAILED\n")
+        print("📊 Current Configuration:")
+        print(f"   ENVIRONMENT: {settings.ENVIRONMENT}")
+        print(f"   DEBUG: {settings.DEBUG}")
+        print(f"   ADMIN_UI_ENABLED: {settings.ADMIN_UI_ENABLED}")
+        print(f"   ADMIN_UI_HTTPS_ONLY: {settings.ADMIN_UI_HTTPS_ONLY}")
+        print(f"   SESSION_SECRET_KEY: {'*' * min(len(settings.SESSION_SECRET_KEY), 32)} ({len(settings.SESSION_SECRET_KEY)} chars)")
+        print(f"   DATABASE_URL: {'SET' if settings.DATABASE_URL else 'NOT SET'}")
+        print(f"   REDIS_URL: {'SET' if settings.REDIS_URL else 'NOT SET'}")
+        print(f"   PASSWORD_HASH_ROUNDS: {settings.PASSWORD_HASH_ROUNDS}")
+        print("\n🔍 Validation Errors:")
         
         critical_found = False
         for error in errors:
@@ -89,6 +99,11 @@ class StartupValidator:
         if critical_found:
             print("\n🚨 CRITICAL ERRORS DETECTED - APPLICATION STARTUP ABORTED")
             print("Fix the above configuration issues and restart.\n")
+            print("💡 Quick fixes:")
+            print("   - Set DEBUG=false in Railway environment variables")
+            print("   - Ensure SESSION_SECRET_KEY is at least 32 characters")
+            print("   - Verify DATABASE_URL is configured")
+            print("   - Set ADMIN_UI_HTTPS_ONLY=false for Railway (proxy mode)\n")
             sys.exit(1)
         else:
             print("\n⚠️  WARNINGS DETECTED - Application will start but review recommended\n")

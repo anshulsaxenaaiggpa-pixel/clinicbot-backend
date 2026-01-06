@@ -45,7 +45,13 @@ async def qr_generator_page(
         )
     except Exception as e:
         import traceback
-        return HTMLResponse(content=f"<h1>QR Generator Error</h1><pre>{traceback.format_exc()}</pre>", status_code=500)
+        error_trace = traceback.format_exc()
+        print(f"\n{'='*80}")
+        print(f"❌ QR GENERATOR ERROR:")
+        print(f"{'='*80}")
+        print(error_trace)
+        print(f"{'='*80}\n")
+        return HTMLResponse(content=f"<h1>QR Generator Error</h1><pre>{error_trace}</pre>", status_code=500)
 
 
 @router.get("/qr/{doctor_id}", response_class=HTMLResponse)
@@ -62,18 +68,28 @@ async def view_qr_code(
         raise HTTPException(status_code=404, detail="Doctor not found")
     
     # Note: Doctor model doesn't have whatsapp_number - would need clinic's WhatsApp
-    return templates.TemplateResponse(
-        "tools/qr_view.html",
-        {
-            "request": request,
-            "admin_user": admin_user,
-            "csrf_token": getattr(request.state, 'csrf_token', ''),
-            "doctor": doctor,
-            "whatsapp_link": "https://wa.me/",  # Placeholder - need clinic WhatsApp
-            "share_message": f"Book appointment with Dr. {doctor.name}",
-            "qr_download_url": f"/admin/tools/qr/{doctor_id}/download"
-        }
-    )
+    try:
+        return templates.TemplateResponse(
+            "tools/qr_view.html",
+            {
+                "request": request,
+                "admin_user": admin_user,
+                "csrf_token": getattr(request.state, 'csrf_token', ''),
+                "doctor": doctor,
+                "whatsapp_link": "https://wa.me/",  # Placeholder - need clinic WhatsApp
+                "share_message": f"Book appointment with Dr. {doctor.name}",
+                "qr_download_url": f"/admin/tools/qr/{doctor_id}/download"
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"\n{'='*80}")
+        print(f"❌ QR VIEW ERROR:")
+        print(f"{'='*80}")
+        print(error_trace)
+        print(f"{'='*80}\n")
+        return HTMLResponse(content=f"<h1>QR View Error</h1><pre>{error_trace}</pre>", status_code=500)
 
 
 @router.get("/qr/{doctor_id}/download")

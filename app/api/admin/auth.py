@@ -275,10 +275,41 @@ async def dashboard(
     db: Session = Depends(get_db)
 ):
     """Admin dashboard - MINIMAL VERSION."""
-    return templates.TemplateResponse(
-        "admin_dashboard_minimal.html",
-        {
-            "request": request,
-            "admin_user": admin_user
-        }
-    )
+    try:
+        return templates.TemplateResponse(
+            "admin_dashboard_minimal.html",
+            {
+                "request": request,
+                "admin_user": admin_user
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"\n{'='*80}")
+        print(f"❌ DASHBOARD ERROR:")
+        print(f"{'='*80}")
+        print(error_trace)
+        print(f"{'='*80}\n")
+        
+        # Return detailed error page
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head><title>Dashboard Error</title></head>
+                <body style="font-family: monospace; padding: 2rem;">
+                    <h1 style="color: red;">❌ Dashboard Error</h1>
+                    <p>An error occurred while loading the dashboard.</p>
+                    <div style="background: #f5f5f5; padding: 1rem; border-radius: 5px; overflow: auto;">
+                        <strong>Error:</strong> {str(e)}<br><br>
+                        <strong>Full Traceback:</strong>
+                        <pre>{error_trace}</pre>
+                    </div>
+                    <br>
+                    <a href="/admin/login">Back to Login</a>
+                </body>
+            </html>
+            """,
+            status_code=500
+        )
+

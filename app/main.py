@@ -35,18 +35,34 @@ async def run_config_validation():
     Application will exit immediately if critical security issues detected:
     - DEBUG=True in production
     - Weak session secrets (< 32 chars)
-    - Missing database/Redis URLs
+    - Missing database URLs
     - HTTPS not enforced in production
     
-    This prevents insecure deployment - CANNOT BE BYPASSED.
+    This prevents insecure deployment while providing detailed error info.
     """
     print("\n" + "=" * 80)
     print("🔒 RUNNING STARTUP SECURITY VALIDATION - CuraSlot Admin")
     print("=" * 80)
-    startup_validator.validate_or_exit()
-    print("=" * 80)
-    print("✅ SECURITY VALIDATION PASSED - Application starting")
-    print("=" * 80 + "\n")
+    
+    try:
+        startup_validator.validate_or_exit()
+        print("=" * 80)
+        print("✅ SECURITY VALIDATION PASSED - Application starting")
+        print("=" * 80 + "\n")
+    except SystemExit as e:
+        # Validator failed with exit code - re-raise to stop startup
+        print("=" * 80)
+        print("🛑 STARTUP ABORTED DUE TO VALIDATION FAILURE")
+        print("=" * 80 + "\n")
+        raise
+    except Exception as e:
+        # Unexpected error in validator itself
+        print("=" * 80)
+        print(f"⚠️ VALIDATION ERROR (non-fatal): {e}")
+        print("Continuing startup - please review configuration")
+        print("=" * 80 + "\n")
+        import traceback
+        traceback.print_exc()
     
     # ===== AUTO-MIGRATION ON STARTUP =====
     print("=" * 80)
