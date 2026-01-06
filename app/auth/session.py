@@ -130,11 +130,15 @@ class SessionManager:
         if not session_data:
             return None
         
-        # Verify IP address (prevent session hijacking)
-        if session_data.get("ip_address") != ip_address:
-            # IP mismatch - destroy session
-            self.destroy_session(session_token)
-            return None
+        # DISABLED: IP validation breaks on Railway (proxy changes IPs between requests)
+        # Railway proxy assigns different IPs (100.64.0.X) to same user's requests
+        # This was causing sessions to be destroyed after first click
+        # Security trade-off: Less protection against session hijacking, but sessions actually work
+        # 
+        # if session_data.get("ip_address") != ip_address:
+        #     # IP mismatch - destroy session
+        #     self.destroy_session(session_token)
+        #     return None
         
         # Renew session TTL on activity
         self.redis.expire(session_key, self.SESSION_TTL_SECONDS)
