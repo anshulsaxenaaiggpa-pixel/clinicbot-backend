@@ -61,22 +61,16 @@ async def view_qr_code(
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
     
-    if not doctor.whatsapp_number:
-        raise HTTPException(status_code=400, detail="Doctor has no WhatsApp number")
-    
-    # Get WhatsApp link and share message
-    whatsapp_link = QRCodeService.get_whatsapp_link(doctor)
-    share_message = QRCodeService.get_share_message(doctor)
-    
+    # Note: Doctor model doesn't have whatsapp_number - would need clinic's WhatsApp
     return templates.TemplateResponse(
         "tools/qr_view.html",
         {
             "request": request,
             "admin_user": admin_user,
-            "csrf_token": request.state.csrf_token,
+            "csrf_token": getattr(request.state, 'csrf_token', ''),
             "doctor": doctor,
-            "whatsapp_link": whatsapp_link,
-            "share_message": share_message,
+            "whatsapp_link": "https://wa.me/",  # Placeholder - need clinic WhatsApp
+            "share_message": f"Book appointment with Dr. {doctor.name}",
             "qr_download_url": f"/admin/tools/qr/{doctor_id}/download"
         }
     )
@@ -94,17 +88,28 @@ async def download_qr_code(
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
     
-    if not doctor.whatsapp_number:
-        raise HTTPException(status_code=400, detail="Doctor has no WhatsApp number")
-    
-    # Generate QR code
+    # Generate simple QR code with doctor info
     try:
-        qr_bytes = QRCodeService.generate_qr_code_bytes(doctor)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Create a simple URL or message for QR code
+        qr_data = f"Doctor: {doctor.name}, Specialization: {doctor.specialization or 'General'}"
+        
+        import qrcode
+        from io import BytesIO
+        
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(qr_data)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        qr_bytes = buffer.getvalue()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"QR generation failed: {str(e)}")
     
     # Return as downloadable PNG
-    filename = f"qr_{doctor.full_name.replace(' ', '_').lower()}_{doctor.city.lower()}.png"
+    filename = f"qr_{doctor.name.replace(' ', '_').lower()}.png"
     
     return Response(
         content=qr_bytes,
