@@ -290,9 +290,9 @@ async def dashboard(
             Doctor.status == 'trial'
         ).scalar() or 0
         
-        # MRR = Active doctors × ₹99
-        mrr = active_doctors * 99
-        pipeline = trial_doctors * 99
+        # MRR = Active doctors × ₹199
+        mrr = active_doctors * 199
+        pipeline = trial_doctors * 199
         pending_payments = 0
         
         return templates.TemplateResponse(
