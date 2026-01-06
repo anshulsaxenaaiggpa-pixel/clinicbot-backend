@@ -20,11 +20,11 @@ from app.schemas.validation import E164PhoneValidator
 from app.db.session import get_db
 
 
-router = APIRouter(prefix="/admin/doctors", tags=["admin-doctors"])
+router = APIRouter(prefix="/admin/doctors", tags=["admin-doctors"], redirect_slashes=False)
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent.parent / "templates"))
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 async def list_doctors(
     request: Request,
     page: int = 1,

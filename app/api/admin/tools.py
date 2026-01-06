@@ -40,7 +40,7 @@ async def qr_generator_page(
             {
                 "request": request,
                 "admin_user": admin_user,
-                "csrf_token": request.state.csrf_token,
+                "csrf_token": getattr(request.state, 'csrf_token', ''),
                 "doctors": doctors
             }
         )
