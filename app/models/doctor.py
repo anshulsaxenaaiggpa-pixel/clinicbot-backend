@@ -21,6 +21,10 @@ class Doctor(Base):
     specialization = Column(String(50))
     default_fee = Column(Integer)  # Default consultation fee in rupees
     
+    # Revenue fields
+    upi_id = Column(String(100), nullable=True)  # UPI ID for payment collection
+    status = Column(String(20), default='active')  # active, trial, suspended
+    
     # Optional: Per-doctor availability override
     custom_availability = Column(JSON, nullable=True)  # Override clinic timing if needed
     
@@ -32,4 +36,5 @@ class Doctor(Base):
     # Relationships
     clinic = relationship("Clinic", back_populates="doctors")
     appointments = relationship("Appointment", back_populates="doctor")
+
 

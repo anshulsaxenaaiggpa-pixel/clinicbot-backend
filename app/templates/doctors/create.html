@@ -43,6 +43,28 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="upi_id" class="form-label">UPI ID *</label>
+                            <input type="text" class="form-control font-monospace" id="upi_id" name="upi_id" required
+                                pattern="[a-zA-Z0-9.\-_]{2,}@[a-zA-Z]{2,}" placeholder="doctor@paytm">
+                            <div class="form-text">
+                                <i class="bi bi-currency-rupee"></i>
+                                For ₹99/month payment collection (e.g., drname@paytm, drname@upi)
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Subscription Status *</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="active" selected>Active (Paid ₹99/month)</option>
+                                <option value="trial">Trial (14 days free)</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle"></i>
+                                Trial converts to Active after payment confirmation
+                            </div>
+                        </div>
+
                         <div class="mb-4">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="is_searchable" name="is_searchable"

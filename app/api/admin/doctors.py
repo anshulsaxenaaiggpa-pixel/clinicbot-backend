@@ -130,12 +130,14 @@ async def create_doctor(
     specialty: str = Form(...),
     city: str = Form(...),
     whatsapp_number: str = Form(...),
+    upi_id: str = Form(...),
+    status: str = Form("active"),
     is_searchable: bool = Form(False),  # Default False (privacy-first)
     admin_user: AdminUser = Depends(require_admin),
     csrf_valid: bool = Depends(validate_csrf),
     db: Session = Depends(get_db)
 ):
-    """Create new doctor."""
+    """Create new doctor with UPI and subscription status."""
     # Require ADMIN or SUPERADMIN role
     if not admin_user.has_permission(AdminRole.CLINIC_ADMIN):
         raise HTTPException(
@@ -148,6 +150,20 @@ async def create_doctor(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid WhatsApp number. Must be in E.164 format (e.g., +919876543210)"
+        )
+    
+    # Validate UPI ID format
+    if not upi_id or '@' not in upi_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid UPI ID. Must be in format: username@provider (e.g., drname@paytm)"
+        )
+    
+    # Validate status
+    if status not in ['active', 'trial', 'suspended']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid status. Must be: active, trial, or suspended"
         )
     
     # Check for duplicate WhatsApp number
@@ -167,6 +183,8 @@ async def create_doctor(
         specialty=specialty.strip(),
         city=city.strip(),
         whatsapp_number=whatsapp_number,
+        upi_id=upi_id.strip(),
+        status=status,
         is_searchable=is_searchable,  # Explicit opt-in required
         is_active=True
     )
@@ -185,6 +203,8 @@ async def create_doctor(
             "doctor_id": str(doctor.id),
             "full_name": doctor.full_name,
             "city": doctor.city,
+            "upi_id": doctor.upi_id,
+            "status": doctor.status,
             "is_searchable": doctor.is_searchable,
             "ip_address": client_ip
         },
