@@ -38,24 +38,30 @@ async def require_admin(
     Require valid admin session.
     
     Validates session cookie and returns authenticated admin user.
-    Redirects to login if not authenticated.
+    Raises 401 if not authenticated (triggers redirect to login in browser).
     """
     # Get session cookie
     session_token = request.cookies.get(session_manager.COOKIE_NAME)
     
     if not session_token:
-        # Not authenticated - return redirect response
-        return RedirectResponse(url="/admin/login", status_code=302)
+        # Not authenticated - raise exception that will be caught by frontend
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"Location": "/admin/login"}
+        )
     
     # Validate session
     client_ip = get_client_ip(request)
     session_data = session_manager.validate_session(session_token, client_ip)
     
     if not session_data:
-        # Invalid/expired session - clear cookie and redirect to login
-        response = RedirectResponse(url="/admin/login", status_code=302)
-        response.delete_cookie(session_manager.COOKIE_NAME)
-        return response
+        # Invalid/expired session
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired",
+            headers={"Location": "/admin/login"}
+        )
     
     # Retrieve admin user
     admin_user = db.query(AdminUser).filter(
@@ -63,14 +69,16 @@ async def require_admin(
     ).first()
     
     if not admin_user or not admin_user.is_active:
-        # User not found or inactive - clear cookie and redirect
-        response = RedirectResponse(url="/admin/login", status_code=302)
-        response.delete_cookie(session_manager.COOKIE_NAME)
-        return response
+        # User not found or inactive
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+            headers={"Location": "/admin/login"}
+        )
     
     # Store session data in request state for templates
     request.state.admin_user = admin_user
-    request.state.csrf_token = session_data["csrf_token"]
+    request.state.csrf_token = session_data.get("csrf_token", "")
     
     return admin_user
 
