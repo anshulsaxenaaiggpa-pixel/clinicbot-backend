@@ -159,6 +159,7 @@ async def create_doctor(
             detail="Invalid UPI ID. Must be in format: username@provider (e.g., drname@paytm)"
         )
     
+    
     # Validate status
     if status not in ['active', 'trial', 'suspended']:
         raise HTTPException(
@@ -166,26 +167,28 @@ async def create_doctor(
             detail="Invalid status. Must be: active, trial, or suspended"
         )
     
-    # Check for duplicate WhatsApp number
-    existing = db.query(Doctor).filter(
-        Doctor.whatsapp_number == whatsapp_number
-    ).first()
-    
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Doctor with WhatsApp number {whatsapp_number} already exists"
+    # Get first clinic (or create a default one if none exists)
+    from app.models.clinic import Clinic
+    clinic = db.query(Clinic).first()
+    if not clinic:
+        # Create a default clinic
+        clinic = Clinic(
+            id=str(uuid.uuid4()),
+            name="Default Clinic",
+            phone=whatsapp_number,
+            is_active=True
         )
+        db.add(clinic)
+        db.flush()
     
     # Create doctor
     doctor = Doctor(
-        full_name=full_name.strip(),
-        specialty=specialty.strip(),
-        city=city.strip(),
-        whatsapp_number=whatsapp_number,
+        id=str(uuid.uuid4()),
+        clinic_id=str(clinic.id),
+        name=full_name.strip(),
+        specialization=specialty.strip(),
         upi_id=upi_id.strip(),
         status=status,
-        is_searchable=is_searchable,  # Explicit opt-in required
         is_active=True
     )
     
@@ -201,11 +204,12 @@ async def create_doctor(
         actor_id=str(admin_user.id),
         metadata={
             "doctor_id": str(doctor.id),
-            "full_name": doctor.full_name,
-            "city": doctor.city,
+            "name": doctor.name,
+            "specialization": doctor.specialization,
             "upi_id": doctor.upi_id,
             "status": doctor.status,
-            "is_searchable": doctor.is_searchable,
+            "whatsapp_number": whatsapp_number,
+            "clinic_id": str(clinic.id),
             "ip_address": client_ip
         },
         db=db
