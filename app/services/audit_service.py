@@ -59,20 +59,18 @@ class AuditService:
             should_close = True
         
         try:
-            # Map the new-style parameters to the actual schema
-            # actor -> actor_type, actor_id -> actor_reference, event_type -> action
+            import json
+            
+            # Create audit log with correct schema
             audit = AuditLog(
                 id=str(uuid.uuid4()),
-                # clinic_id removed - not in current database schema
-                actor_type=actor,  # system/clinic/admin/patient
-                actor_reference=actor_id,  # phone number or admin ID
-                action=event_type,  # The event type becomes the action
-                entity_type="admin_action",  # Generic type for admin actions
-                entity_id=None,
-                old_state=None,
-                new_state=metadata,  # Store metadata in new_state
-                timestamp=datetime.utcnow(),
-                ip_address=metadata.get("ip_address") if metadata else None
+                event_id=str(uuid.uuid4()),  # Unique event ID
+                event_type=event_type,  # The event type
+                actor=actor,  # system/clinic/admin/patient
+                actor_id=actor_id,  # phone number or admin ID
+                patient_phone_hash=None,  # Not using phone hash for now
+                event_metadata=json.dumps(metadata) if metadata else None,  # Store as JSON string
+                timestamp=datetime.utcnow()
             )
             
             db.add(audit)
@@ -139,10 +137,10 @@ class AuditService:
             
             # Apply filters
             if event_type:
-                query = query.filter(AuditLog.action == event_type)
+                query = query.filter(AuditLog.event_type == event_type)
             
             if actor:
-                query = query.filter(AuditLog.actor_type == actor)
+                query = query.filter(AuditLog.actor == actor)
             
             # Note: patient_phone filter is not supported anymore since
             # the schema doesn't have patient_phone_hash field

@@ -9,19 +9,16 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    # clinic_id removed - not in current Railway database schema
-    actor_type = Column(String(20), nullable=False)  # PATIENT/STAFF/SYSTEM
-    actor_reference = Column(String(100), nullable=False)  # phone/staff_id
-    action = Column(String(50), nullable=False)  # CONSENT_GIVEN/BOOK_APPOINTMENT
-    entity_type = Column(String(50), nullable=False)  # CONSENT/APPOINTMENT
-    entity_id = Column(String(36), nullable=True)
-    old_state = Column(sa.JSON().with_variant(postgresql.JSONB, "postgresql"), nullable=True)
-    new_state = Column(sa.JSON().with_variant(postgresql.JSONB, "postgresql"), nullable=True)
+    event_id = Column(String(100), nullable=False)  # Unique event identifier
+    event_type = Column(String(50), nullable=False)  # Type of event
+    actor = Column(String(50), nullable=False)  # Who performed (admin/patient/system)
+    actor_id = Column(String(100), nullable=True)  # Actor identifier
+    patient_phone_hash = Column(String(100), nullable=True)  # Hashed phone if patient-related
+    event_metadata = Column(sa.Text, nullable=True)  # JSON string of metadata
     timestamp = Column(DateTime(timezone=True), default=datetime.utcnow)
-    ip_address = Column(String(50), nullable=True)
 
     # Indexes for query performance
     __table_args__ = (
-        Index('idx_audit_action', 'action'),
-        Index('idx_audit_entity', 'entity_type', 'entity_id'),
+        Index('idx_audit_event_type', 'event_type'),
+        Index('idx_audit_timestamp', 'timestamp'),
     )

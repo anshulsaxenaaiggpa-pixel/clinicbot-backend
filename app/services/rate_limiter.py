@@ -34,8 +34,13 @@ class RateLimiter:
     Implements sliding window rate limiting for abuse prevention.
     """
     
-    def __init__(self, redis_url: str = "redis://localhost:6379/0"):
+    def __init__(self, redis_url: str = None):
         """Initialize rate limiter with Redis connection."""
+        # Use provided URL or get from settings
+        if redis_url is None:
+            from app.config import settings
+            redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
+        
         try:
             self.redis_client = redis.from_url(redis_url, decode_responses=True)
             # Test connection
@@ -152,9 +157,8 @@ def get_rate_limiter() -> RateLimiter:
     """Get global rate limiter instance."""
     global _rate_limiter
     if _rate_limiter is None:
-        import os
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        _rate_limiter = RateLimiter(redis_url)
+        from app.config import settings
+        _rate_limiter = RateLimiter(settings.REDIS_URL)
     return _rate_limiter
 
 
