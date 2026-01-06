@@ -40,12 +40,11 @@ async def list_doctors(
         if search:
             search_filter = f"%{search}%"
             query = query.filter(
-                (Doctor.full_name.ilike(search_filter)) |
-                (Doctor.city.ilike(search_filter)) |
-                (Doctor.specialty.ilike(search_filter))
+                (Doctor.name.ilike(search_filter)) |
+                (Doctor.specialization.ilike(search_filter))
             )
         
-        doctors = query.order_by(Doctor.full_name).all()
+        doctors = query.order_by(Doctor.name).all()
         
         # Generate simple HTML table
         html = f"""
@@ -65,24 +64,19 @@ async def list_doctors(
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Specialty</th>
-                            <th>City</th>
-                            <th>WhatsApp</th>
-                            <th>Searchable</th>
+                            <th>Specialization</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
         """
         
         for doctor in doctors:
-            searchable = "✅ Yes" if doctor.is_searchable else "❌ Private"
             html += f"""
                         <tr>
-                            <td>{doctor.full_name}</td>
-                            <td>{doctor.specialty}</td>
-                            <td>{doctor.city}</td>
-                            <td>{doctor.whatsapp_number}</td>
-                            <td>{searchable}</td>
+                            <td>{doctor.name}</td>
+                            <td>{doctor.specialization or 'N/A'}</td>
+                            <td>{'✅ Active' if doctor.is_active else '❌ Inactive'}</td>
                         </tr>
             """
         
