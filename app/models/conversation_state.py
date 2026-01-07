@@ -7,7 +7,7 @@ Stores ONLY metadata, never full chat transcripts per COMPLIANCE_BASELINE.md
 from enum import Enum
 from typing import Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, String, Boolean, DateTime, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
 
