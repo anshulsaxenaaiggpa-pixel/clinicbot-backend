@@ -1,0 +1,103 @@
+{% extends "doctor/base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="bi bi-gear"></i> Settings</h2>
+
+    <div class="row">
+        <!-- Profile Settings -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/doctor/settings/profile">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ doctor.name }}"
+                                required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="specialization" class="form-label">Specialization</label>
+                            <input type="text" class="form-control" id="specialization" name="specialization"
+                                value="{{ doctor.specialization or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">WhatsApp Number</label>
+                            <input type="text" class="form-control" value="{{ doctor.whatsapp_number }}" disabled>
+                            <small class="text-muted">Cannot be changed</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">UPI ID</label>
+                            <input type="text" class="form-control" value="{{ doctor.upi_id or 'Not set' }}" disabled>
+                            <small class="text-muted">Contact admin to update</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Update Profile</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Password Change -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Change Password</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/doctor/settings/password">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="current_password" name="current_password"
+                                required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" required
+                                minlength="6">
+                        </div>
+
+                        <button type="submit" class="btn btn-warning">Change Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Info -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Subscription Status</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Status:</strong>
+                        {% if doctor.status == 'active' %}
+                        <span class="badge bg-success">Active</span>
+                        {% elif doctor.status == 'trial' %}
+                        <span class="badge bg-warning">Trial</span>
+                        {% else %}
+                        <span class="badge bg-danger">Suspended</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Plan:</strong> ₹199/month</p>
+                    <p><strong>Consultation Fee:</strong> ₹{{ doctor.consultation_fee }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "doctor/base.html" %}
+
+{% block title %}Slots{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="bi bi-calendar3"></i> Appointment Slots</h2>
+
+    <div class="row">
+        {% for slot in slots_data %}
+        <div class="col-md-12 mb-3">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between">
+                        <strong>{{ slot.day_name }}, {{ slot.date.strftime('%d %b %Y') }}</strong>
+                        <span class="badge bg-primary">{{ slot.booked_count }} / {{ slot.total_count }} slots</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if slot.appointments %}
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for appt in slot.appointments %}
+                        <div
+                            class="badge {% if appt.status == 'booked' %}bg-success{% elif appt.status == 'completed' %}bg-secondary{% else %}bg-danger{% endif %} p-2">
+                            {{ appt.start_utc_ts.strftime('%I:%M %p') }}
+                            {% if appt.patient_name %}
+                            - {{ appt.patient_name }}
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No appointments scheduled</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

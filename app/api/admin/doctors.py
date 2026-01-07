@@ -132,6 +132,7 @@ async def create_doctor(
     whatsapp_number: str = Form(...),
     upi_id: str = Form(...),
     status: str = Form("active"),
+    consultation_fee: int = Form(500),
     is_searchable: bool = Form(False),  # Default False (privacy-first)
     admin_user: AdminUser = Depends(require_admin),
     csrf_valid: bool = Depends(validate_csrf),
@@ -159,6 +160,9 @@ async def create_doctor(
             detail="Invalid UPI ID. Must be in format: username@provider (e.g., drname@paytm)"
         )
     
+    # Validate consultation fee
+    if consultation_fee < 0:
+        consultation_fee = 500  # Default to ₹500 if invalid
     
     # Validate status
     if status not in ['active', 'trial', 'suspended']:
@@ -189,6 +193,7 @@ async def create_doctor(
         specialization=specialty.strip(),
         upi_id=upi_id.strip(),
         status=status,
+        consultation_fee=consultation_fee,
         is_active=True
     )
     

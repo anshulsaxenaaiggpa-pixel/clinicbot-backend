@@ -1,0 +1,111 @@
+{% extends "doctor/base.html" %}
+
+{% block title %}Appointments{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-calendar-check"></i> Appointments</h2>
+
+        <!-- Filter Tabs -->
+        <div class="btn-group" role="group">
+            <a href="/doctor/appointments?filter=today"
+                class="btn btn-sm {% if filter == 'today' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                Today
+            </a>
+            <a href="/doctor/appointments?filter=upcoming"
+                class="btn btn-sm {% if filter == 'upcoming' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                Upcoming
+            </a>
+            <a href="/doctor/appointments?filter=past"
+                class="btn btn-sm {% if filter == 'past' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                Past
+            </a>
+        </div>
+    </div>
+
+    {% if appointments %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Patient Name</th>
+                            <th>Patient Phone</th>
+                            <th>Consultation Fee</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appt in appointments %}
+                        <tr>
+                            <td>
+                                <strong>{{ appt.start_utc_ts.strftime('%I:%M %p') }}</strong><br>
+                                <small class="text-muted">{{ appt.date.strftime('%d %b %Y') }}</small>
+                            </td>
+                            <td>{{ appt.patient_name or 'N/A' }}</td>
+                            <td><code>{{ appt.patient_phone }}</code></td>
+                            <td><strong>₹{{ consultation_fee }}</strong></td>
+                            <td>
+                                {% if appt.status == 'booked' %}
+                                <span class="badge bg-primary">Booked</span>
+                                {% elif appt.status == 'completed' %}
+                                <span class="badge bg-success">✓ Completed</span>
+                                {% elif appt.status == 'cancelled' %}
+                                <span class="badge bg-danger">✗ Cancelled</span>
+                                {% elif appt.status == 'no_show' %}
+                                <span class="badge bg-secondary">No Show</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if appt.status == 'booked' %}
+                                <div class="btn-group btn-group-sm">
+                                    <form action="/doctor/appointments/{{ appt.id }}/complete" method="POST"
+                                        class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn btn-success" title="Mark as completed">
+                                            <i class="bi bi-check-circle"></i> Complete
+                                        </button>
+                                    </form>
+                                    <form action="/doctor/appointments/{{ appt.id }}/cancel" method="POST"
+                                        class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Cancel this appointment?')" title="Cancel">
+                                            <i class="bi bi-x-circle"></i> Cancel
+                                        </button>
+                                    </form>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-calendar-x fs-1 text-muted"></i>
+            <h5 class="mt-3">No appointments found</h5>
+            <p class="text-muted">
+                {% if filter == 'today' %}
+                No appointments scheduled for today.
+                {% elif filter == 'upcoming' %}
+                No upcoming appointments.
+                {% else %}
+                No past appointments.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

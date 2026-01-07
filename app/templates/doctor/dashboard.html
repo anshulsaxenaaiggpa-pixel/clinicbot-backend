@@ -1,0 +1,114 @@
+{% extends "doctor/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">👋 Welcome, Dr. {{ doctor.name }}</h2>
+
+    <!-- Stats Row -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Today's Appointments</h6>
+                        <div class="stat-value">{{ today_appointments }}</div>
+                    </div>
+                    <div class="fs-1 text-primary">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Today's Revenue</h6>
+                        <div class="stat-value">₹{{ today_revenue }}</div>
+                        <small class="text-muted">{{ today_appointments }} × ₹{{ consultation_fee }}</small>
+                    </div>
+                    <div class="fs-1 text-success">
+                        <i class="bi bi-currency-rupee"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Total Patients</h6>
+                        <div class="stat-value">{{ total_patients }}</div>
+                    </div>
+                    <div class="fs-1 text-info">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Subscription Status</h6>
+                        <div class="stat-value fs-4">
+                            {% if subscription_status == 'ACTIVE' %}
+                            <span class="badge bg-success">✓ Active</span>
+                            {% elif subscription_status == 'TRIAL' %}
+                            <span class="badge bg-warning">⏱ Trial</span>
+                            {% else %}
+                            <span class="badge bg-danger">❌ Suspended</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">₹199/month</small>
+                    </div>
+                    <div class="fs-1 text-warning">
+                        <i class="bi bi-star"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="stat-card">
+                <h5 class="mb-3">Quick Actions</h5>
+                <div class="d-flex gap-2">
+                    <a href="/doctor/appointments" class="btn btn-primary">
+                        <i class="bi bi-calendar-check"></i> View Appointments
+                    </a>
+                    <a href="/doctor/slots" class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-plus"></i> Add Slot
+                    </a>
+                    <a href="/doctor/revenue" class="btn btn-outline-success">
+                        <i class="bi bi-graph-up"></i> Revenue Report
+                    </a>
+                    <a href="/doctor/qr" class="btn btn-outline-info">
+                        <i class="bi bi-qr-code"></i> My QR Code
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Appointments -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="stat-card">
+                <h5 class="mb-3">📅 This Week</h5>
+                <p class="mb-0">
+                    <strong>{{ upcoming_appointments }}</strong> appointments scheduled for the next 7 days
+                </p>
+                <a href="/doctor/appointments" class="btn btn-sm btn-link">View all →</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

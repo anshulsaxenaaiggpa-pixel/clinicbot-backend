@@ -103,6 +103,16 @@ async def run_config_validation():
                 print("✅ Ensured status column exists")
             except Exception as e:
                 print(f"⚠️ status column: {e}")
+            
+            # Add consultation_fee if missing
+            try:
+                conn.execute(text("""
+                    ALTER TABLE doctors ADD COLUMN IF NOT EXISTS consultation_fee INTEGER DEFAULT 500
+                """))
+                conn.commit()
+                print("✅ Ensured consultation_fee column exists")
+            except Exception as e:
+                print(f"⚠️ consultation_fee column: {e}")
                 
         print("✅ Doctor columns verified\n")
     except Exception as e:
@@ -390,6 +400,31 @@ except Exception as e:
     admin_loaded = False
     admin_import_error = str(e)
 
+# Doctor Dashboard Routes
+doctor_import_error = None
+doctor_loaded = False
+try:
+    from app.api.doctor import (
+        auth as doctor_auth,
+        dashboard as doctor_dashboard,
+        appointments as doctor_appointments,
+        revenue as doctor_revenue,
+        slots as doctor_slots,
+        patients as doctor_patients,
+        settings as doctor_settings,
+        messages as doctor_messages,
+        qr as doctor_qr
+    )
+    doctor_loaded = True
+    print("✅ Doctor dashboard routes imported successfully")
+except Exception as e:
+    print(f"❌ Doctor UI Import Failed: {e}")
+    import traceback
+    traceback.print_exc()
+    doctor_loaded = False
+    doctor_import_error = str(e)
+
+
 # Admin UI routes (requires SESSION_SECRET_KEY and ADMIN_UI_ENABLED=True)
 if settings.ADMIN_UI_ENABLED:
     print(f"🔧 ADMIN_UI_ENABLED=True, admin_loaded={admin_loaded}")
@@ -448,6 +483,25 @@ if settings.ADMIN_UI_ENABLED:
             </html>
             """
             return HTMLResponse(content=error_html, status_code=500)
+
+# Register Doctor Dashboard Routes
+if doctor_loaded:
+    try:
+        print("📝 Registering doctor routes...")
+        app.include_router(doctor_auth.router, tags=["doctor-auth"])
+        app.include_router(doctor_dashboard.router, tags=["doctor-dashboard"])
+        app.include_router(doctor_appointments.router, tags=["doctor-appointments"])
+        app.include_router(doctor_revenue.router, tags=["doctor-revenue"])
+        app.include_router(doctor_slots.router, tags=["doctor-slots"])
+        app.include_router(doctor_patients.router, tags=["doctor-patients"])
+        app.include_router(doctor_settings.router, tags=["doctor-settings"])
+        app.include_router(doctor_messages.router, tags=["doctor-messages"])
+        app.include_router(doctor_qr.router, tags=["doctor-qr"])
+        print("✅ All doctor routes registered successfully!")
+    except Exception as e:
+        print(f"⚠️ Doctor route registration failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 app.include_router(doctor_registration.router, prefix="/api/v1/registration", tags=["registration"])
 

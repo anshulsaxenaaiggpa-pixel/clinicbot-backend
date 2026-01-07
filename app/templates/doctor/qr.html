@@ -1,0 +1,63 @@
+{% extends "doctor/base.html" %}
+
+{% block title %}QR Code{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="bi bi-qr-code"></i> My Booking QR Code</h2>
+
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card text-center">
+                <div class="card-body p-5">
+                    <h5 class="mb-4">Personal Booking QR Code</h5>
+
+                    <!-- QR Code -->
+                    <div class="mb-4">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={{ booking_url }}"
+                            alt="Booking QR Code" class="img-fluid" style="max-width: 300px;">
+                    </div>
+
+                    <p class="text-muted mb-4">
+                        <strong>Dr. {{ doctor.name }}</strong><br>
+                        {{ doctor.specialization }}<br>
+                        Consultation Fee: ₹{{ doctor.consultation_fee }}
+                    </p>
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data={{ booking_url }}"
+                            download="dr_{{ doctor.name.replace(' ', '_') }}_qr.png" class="btn btn-primary">
+                            <i class="bi bi-download"></i> Download QR
+                        </a>
+                        <button onclick="window.print()" class="btn btn-outline-primary">
+                            <i class="bi bi-printer"></i> Print
+                        </button>
+                    </div>
+
+                    <div class="mt-4">
+                        <small class="text-muted">
+                            Patients can scan this QR code to book appointments via WhatsApp
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+
+        .sidebar,
+        .navbar,
+        button {
+            display: none !important;
+        }
+
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+    }
+</style>
+{% endblock %}

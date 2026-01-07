@@ -1,0 +1,124 @@
+{% extends "doctor/base.html" %}
+
+{% block title %}Revenue{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="bi bi-currency-rupee"></i> Revenue Dashboard</h2>
+
+    <!-- Revenue Stats -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <h6 class="text-muted">Today's Revenue</h6>
+                <div class="stat-value text-success">₹{{ today_revenue }}</div>
+                <small class="text-muted">{{ today_count }} appointments × ₹{{ consultation_fee }}</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <h6 class="text-muted">This Month</h6>
+                <div class="stat-value text-primary">₹{{ month_revenue }}</div>
+                <small class="text-muted">{{ month_count }} appointments × ₹{{ consultation_fee }}</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <h6 class="text-muted">Consultation Fee</h6>
+                <div class="stat-value">₹{{ consultation_fee }}</div>
+                <button class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal"
+                    data-bs-target="#editFeeModal">
+                    <i class="bi bi-pencil"></i> Edit Fee
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="stat-card">
+                <h5 class="mb-3">Last 7 Days Revenue</h5>
+                <canvas id="revenueChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Fee Modal -->
+<div class="modal fade" id="editFeeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Consultation Fee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/doctor/revenue/update-fee">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="consultation_fee" class="form-label">Consultation Fee (₹)</label>
+                        <input type="number" class="form-control" id="consultation_fee" name="consultation_fee"
+                            value="{{ consultation_fee }}" min="0" step="50" required>
+                        <div class="form-text">Set your per-consultation fee (no restrictions)</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Fee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    const dailyData = {{ daily_data | tojson | safe }};
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dailyData.map(d => d.date),
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: dailyData.map(d => d.revenue),
+                backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function (value) {
+                            return '₹' + value;
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const index = context.dataIndex;
+                            const appts = dailyData[index].appointments;
+                            return `₹${context.parsed.y} (${appts} appointments)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
