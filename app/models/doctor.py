@@ -18,9 +18,9 @@ class Doctor(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=False)
     
-    # Basic info - match database schema
-    full_name = Column(String(100), nullable=False)
-    specialty = Column(String(100))
+    # Basic info - ACTUAL database schema uses name/specialization (001_initial_schema.py)
+    name = Column(String(100), nullable=False)
+    specialization = Column(String(100))
     
     # Authentication
     whatsapp_number = Column(String(20), unique=True, nullable=False)
