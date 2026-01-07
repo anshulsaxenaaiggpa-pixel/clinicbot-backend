@@ -44,8 +44,8 @@ async def update_profile(
     db: Session = Depends(get_db)
 ):
     """Update doctor profile."""
-    doctor.name = name.strip()
-    doctor.specialization = specialization.strip()
+    doctor.full_name = name.strip()
+    doctor.specialty = specialization.strip()
     db.commit()
     
     return RedirectResponse(url="/doctor/settings", status_code=302)

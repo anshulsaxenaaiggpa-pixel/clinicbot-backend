@@ -19,14 +19,14 @@
                     </div>
 
                     <p class="text-muted mb-4">
-                        <strong>Dr. {{ doctor.name }}</strong><br>
-                        {{ doctor.specialization }}<br>
+                        <strong>Dr. {{ doctor.full_name }}</strong><br>
+                        {{ doctor.specialty }}<br>
                         Consultation Fee: ₹{{ doctor.consultation_fee }}
                     </p>
 
                     <div class="d-flex gap-2 justify-content-center">
                         <a href="https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data={{ booking_url }}"
-                            download="dr_{{ doctor.name.replace(' ', '_') }}_qr.png" class="btn btn-primary">
+                            download="dr_{{ doctor.full_name.replace(' ', '_') }}_qr.png" class="btn btn-primary">
                             <i class="bi bi-download"></i> Download QR
                         </a>
                         <button onclick="window.print()" class="btn btn-outline-primary">

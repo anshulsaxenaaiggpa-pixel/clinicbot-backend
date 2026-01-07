@@ -67,7 +67,7 @@ async def approve_payment(
                 f"✅ Payment Confirmed!\n\n"
                 f"Your appointment is confirmed:\n"
                 f"📅 {appointment.start_utc_ts.strftime('%B %d, %Y at %I:%M %p')}\n"
-                f"👨‍⚕️ Dr. {appointment.doctor.name}\n"
+                f"👨‍⚕️ Dr. {appointment.doctor.full_name}\n"
                 f"💰 Amount: ₹{appointment.payment_amount or appointment.amount_paid}\n\n"
                 f"See you soon!"
             )

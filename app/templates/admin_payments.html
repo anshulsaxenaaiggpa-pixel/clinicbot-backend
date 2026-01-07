@@ -128,7 +128,7 @@
                                     <strong>{{ appt.patient_name or appt.patient_phone[-4:] }}</strong><br>
                                     <small class="text-muted">{{ appt.patient_phone }}</small>
                                 </td>
-                                <td>{{ appt.doctor.name if appt.doctor else 'N/A' }}</td>
+                                <td>{{ appt.doctor.full_name if appt.doctor else 'N/A' }}</td>
                                 <td>
                                     {% if appt.start_utc_ts %}
                                     {{ appt.start_utc_ts.strftime('%b %d') }}<br>

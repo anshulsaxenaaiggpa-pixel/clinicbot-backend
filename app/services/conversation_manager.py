@@ -761,7 +761,7 @@ Reply NUMBER ONLY:
                 Doctor.clinic_id == clinic_id,
                 Doctor.is_active == True
             ).all()
-            return [{"id": str(d.id), "name": d.name, "specialization": d.specialization or "General"} for d in doctors]
+            return [{"id": str(d.id), "name": d.full_name, "specialization": d.specialty or "General"} for d in doctors]
         finally:
             db.close()
     
@@ -870,7 +870,7 @@ Reply NUMBER ONLY:
                 "id": str(a.id),
                 "date": a.date.strftime("%d %b %Y"),
                 "time": a.start_utc_ts.strftime("%I:%M %p"),
-                "doctor": a.doctor.name,
+                "doctor": a.doctor.full_name,
                 "service": a.service.name,
                 "fee": a.service.default_fee
             } for a in appts]

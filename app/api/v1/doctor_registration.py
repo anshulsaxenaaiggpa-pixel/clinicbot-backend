@@ -128,7 +128,7 @@ async def approve_doctor(doctor_id: str, db: Session = Depends(get_db)):
     
     new_clinic = Clinic(
         name=doctor.clinic_name,
-        owner_name=doctor.name,
+        owner_name=doctor.full_name,
         whatsapp_number=clinic_whatsapp,
         is_active=True
     )
@@ -207,7 +207,7 @@ async def verify_login_otp(phone: str, otp: str, db: Session = Depends(get_db)):
     return {
         "access_token": token, 
         "token_type": "bearer",
-        "doctor": doctor.name,
+        "doctor": doctor.full_name,
         "clinic_id": str(doctor.clinic_id),
         "clinic_name": doctor.clinic_name
     }

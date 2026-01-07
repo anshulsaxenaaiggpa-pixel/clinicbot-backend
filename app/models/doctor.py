@@ -19,8 +19,8 @@ class Doctor(Base):
     clinic_id = Column(String(36), ForeignKey("clinics.id"), nullable=False)
     
     # Basic info - match database schema
-    name = Column("full_name", String(100), nullable=False)  # Maps to full_name in DB
-    specialization = Column("specialty", String(100))  # Maps to specialty in DB
+    full_name = Column(String(100), nullable=False)
+    specialty = Column(String(100))
     
     # Authentication
     whatsapp_number = Column(String(20), unique=True, nullable=False)

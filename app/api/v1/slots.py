@@ -97,7 +97,7 @@ def get_available_slots(
         slots_response.append(SlotResponse(
             slot_id=slot['slot_id'],
             doctor_id=UUID(slot['doctor_id']),
-            doctor_name=doctor.name,
+            doctor_name=doctor.full_name,
             start_local=slot['start_local'],
             end_local=slot['end_local'],
             start_utc_ts=slot['start_utc_ts'],
@@ -158,8 +158,8 @@ def _build_clinic_config(clinic: Clinic, db: Session) -> dict:
     doctors_list = [
         {
             "id": str(doc.id),
-            "name": doc.name,
-            "specialization": doc.specialization,
+            "name": doc.full_name,
+            "specialization": doc.specialty,
             "fee": doc.default_fee
         }
         for doc in doctors

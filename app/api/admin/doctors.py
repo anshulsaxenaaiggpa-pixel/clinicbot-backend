@@ -40,11 +40,11 @@ async def list_doctors(
         if search:
             search_filter = f"%{search}%"
             query = query.filter(
-                (Doctor.name.ilike(search_filter)) |
-                (Doctor.specialization.ilike(search_filter))
+                (Doctor.full_name.ilike(search_filter)) |
+                (Doctor.specialty.ilike(search_filter))
             )
         
-        doctors = query.order_by(Doctor.name).all()
+        doctors = query.order_by(Doctor.full_name).all()
         
         # Generate simple HTML table
         html = f"""
@@ -74,8 +74,8 @@ async def list_doctors(
         for doctor in doctors:
             html += f"""
                         <tr>
-                            <td>{doctor.name}</td>
-                            <td>{doctor.specialization or 'N/A'}</td>
+                            <td>{doctor.full_name}</td>
+                            <td>{doctor.specialty or 'N/A'}</td>
                             <td>{'✅ Active' if doctor.is_active else '❌ Inactive'}</td>
                         </tr>
             """
@@ -189,8 +189,8 @@ async def create_doctor(
     doctor = Doctor(
         id=str(uuid.uuid4()),
         clinic_id=str(clinic.id),
-        name=full_name.strip(),
-        specialization=specialty.strip(),
+        full_name=full_name.strip(),
+        specialty=specialty.strip(),
         upi_id=upi_id.strip(),
         status=status,
         consultation_fee=consultation_fee,
@@ -209,8 +209,8 @@ async def create_doctor(
         actor_id=str(admin_user.id),
         metadata={
             "doctor_id": str(doctor.id),
-            "name": doctor.name,
-            "specialization": doctor.specialization,
+            "name": doctor.full_name,
+            "specialization": doctor.specialty,
             "upi_id": doctor.upi_id,
             "status": doctor.status,
             "whatsapp_number": whatsapp_number,

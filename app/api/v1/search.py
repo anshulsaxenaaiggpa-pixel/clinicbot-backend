@@ -91,7 +91,7 @@ def get_doctor_whatsapp_link(
     
     return {
         "doctor_id": str(doctor.id),
-        "doctor_name": doctor.name,
+        "doctor_name": doctor.full_name,
         "whatsapp_link": link,
         "qr_code_data": doctor.get_qr_code_data()
     }

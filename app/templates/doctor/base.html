@@ -67,8 +67,8 @@
 </head>
 
 <body>
-
-    {% block extra_nav %}
+    {% block body_content %}
+    <!-- Default: Authenticated Layout with Sidebar -->
     {% if doctor %}
     <!-- Top Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -78,7 +78,7 @@
             </a>
             <div class="ms-auto d-flex align-items-center text-white">
                 <span class="me-3">
-                    <i class="bi bi-person-circle"></i> {{ doctor.name }}
+                    <i class="bi bi-person-circle"></i> {{ doctor.full_name }}
                 </span>
                 <form action="/doctor/logout" method="POST" class="d-inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -146,9 +146,6 @@
             </div>
         </div>
     </div>
-    {% else %}
-    <!-- Content for non-authenticated pages (login) -->
-    {% block content %}{% endblock %}
     {% endif %}
     {% endblock %}
 
