@@ -40,11 +40,11 @@ async def list_doctors(
         if search:
             search_filter = f"%{search}%"
             query = query.filter(
-                (Doctor.full_name.ilike(search_filter)) |
-                (Doctor.specialty.ilike(search_filter))
+                (Doctor.name.ilike(search_filter)) |
+                (Doctor.specialization.ilike(search_filter))
             )
         
-        doctors = query.order_by(Doctor.full_name).all()
+        doctors = query.order_by(Doctor.name).all()
         
         # Generate simple HTML table
         html = f"""

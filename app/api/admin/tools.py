@@ -32,7 +32,7 @@ async def qr_generator_page(
         # Get all active doctors
         doctors = db.query(Doctor).filter(
             Doctor.is_active == True
-        ).order_by(Doctor.full_name).all()
+        ).order_by(Doctor.name).all()
         
         return templates.TemplateResponse(
             "tools/qr_generator.html",

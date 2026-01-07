@@ -74,10 +74,10 @@ class SearchService:
         
         # Filter by specialty if provided
         if specialty:
-            query = query.filter(Doctor.specialty.ilike(f"%{specialty}%"))
+            query = query.filter(Doctor.specialization.ilike(f"%{specialty}%"))
         
         # Execute query
-        doctors = query.order_by(Doctor.full_name).limit(50).all()  # Max 50 results
+        doctors = query.order_by(Doctor.name).limit(50).all()  # Max 50 results
         
         # Format response (metadata only)
         results = [
