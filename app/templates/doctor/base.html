@@ -146,6 +146,9 @@
             </div>
         </div>
     </div>
+    {% else %}
+    <!-- Content for non-authenticated pages (login) -->
+    {% block content %}{% endblock %}
     {% endif %}
     {% endblock %}
 
