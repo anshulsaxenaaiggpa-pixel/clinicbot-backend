@@ -58,52 +58,6 @@ async def seed_doctor_endpoint():
         )
         doctor.set_password("doctor123")  # Set password
         db.add(doctor)
-        db.flush()
-        
-        # Create test appointments for today
-        today = datetime.now().date()
-        times = [
-            (9, 0),   # 9:00 AM
-            (11, 30), # 11:30 AM
-            (14, 0)   # 2:00 PM
-        ]
-        
-        for i, (hour, minute) in enumerate(times):
-            appt_time = datetime.combine(today, datetime.min.time()).replace(hour=hour, minute=minute)
-            
-            appointment = Appointment(
-                id=str(uuid.uuid4()),
-                clinic_id=str(clinic.id),
-                doctor_id=str(doctor.id),
-                service_id=str(uuid.uuid4()),  # Mock service
-                patient_phone=f"+9198765432{i}0",
-                patient_name=f"Patient {i+1}",
-                date=appt_time,
-                start_utc_ts=appt_time,
-                end_utc_ts=appt_time + timedelta(minutes=30),
-                status='booked'
-            )
-            db.add(appointment)
-        
-        # Create some past appointments
-        for i in range(5):
-            past_date = today - timedelta(days=i+1)
-            appt_time = datetime.combine(past_date, datetime.min.time()).replace(hour=10, minute=0)
-            
-            appointment = Appointment(
-                id=str(uuid.uuid4()),
-                clinic_id=str(clinic.id),
-                doctor_id=str(doctor.id),
-                service_id=str(uuid.uuid4()),
-                patient_phone=f"+9198765430{i}",
-                patient_name=f"Past Patient {i+1}",
-                date=appt_time,
-                start_utc_ts=appt_time,
-                end_utc_ts=appt_time + timedelta(minutes=30),
-                status='completed'
-            )
-            db.add(appointment)
-        
         db.commit()
         
         return {
@@ -116,10 +70,7 @@ async def seed_doctor_endpoint():
                 "password": "doctor123",
                 "login_url": "/doctor/login"
             },
-            "appointments": {
-                "today": len(times),
-                "past": 5
-            }
+            "note": "Doctor created without test appointments (appointments require services to exist first)"
         }
         
     except Exception as e:
