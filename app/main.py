@@ -488,7 +488,8 @@ try:
         audit as admin_audit,
         payments as admin_payments,
         payments_page as admin_payments_page,
-        test as admin_test  # NEW: Test route
+        test as admin_test,  # NEW: Test route
+        seed_doctor as admin_seed_doctor  # NEW: Seed doctor endpoint
     )
     admin_loaded = True
 except Exception as e:
@@ -551,6 +552,9 @@ if settings.ADMIN_UI_ENABLED:
             
             app.include_router(admin_test.router, tags=["admin-test"])  # NEW
             print("  ✅ admin_test registered")
+            
+            app.include_router(admin_seed_doctor.router, tags=["admin-seed"])  # NEW
+            print("  ✅ admin_seed_doctor registered")
             print("✅ All admin routers registered successfully!")
         except Exception as router_error: # Fallback for Router Registration Errors
             print(f"⚠️ Admin UI router registration failed: {router_error} - activating fallback debugger")
