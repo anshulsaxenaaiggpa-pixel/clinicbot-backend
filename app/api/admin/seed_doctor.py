@@ -13,9 +13,9 @@ import uuid
 router = APIRouter(prefix="/admin", tags=["admin-tools"])
 
 
-@router.post("/seed-doctor")
+@router.get("/seed-doctor")
 async def seed_doctor_endpoint():
-    """Create test doctor with appointments."""
+    """Create test doctor with appointments - accessible via browser."""
     db = SessionLocal()
     
     try:
