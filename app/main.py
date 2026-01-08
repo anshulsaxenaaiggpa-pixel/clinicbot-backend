@@ -11,6 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import traceback
 import logging
 import sys
+from datetime import datetime
 from app.config import settings
 
 # Configure logging to flush immediately
@@ -78,45 +79,92 @@ async def run_config_validation():
         import traceback
         traceback.print_exc()
     
-    # ===== ENSURE DOCTOR COLUMNS EXIST (bypass broken migration) =====
+    # ===== ENSURE DOCTOR COLUMNS EXIST (PostgreSQL compatible) =====
     print("🔧 Ensuring doctor table has required columns...")
     try:
         from app.db.database import engine
         from sqlalchemy import text
+        
+        # Helper function to check if column exists
+        def column_exists(conn, table_name, column_name):
+            """Check if a column exists in PostgreSQL or SQLite"""
+            try:
+                # Try PostgreSQL information_schema first
+                result = conn.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name=:table AND column_name=:column
+                """), {"table": table_name, "column": column_name})
+                return result.fetchone() is not None
+            except:
+                # Fallback for SQLite - try to query the column
+                try:
+                    conn.execute(text(f"SELECT {column_name} FROM {table_name} LIMIT 1"))
+                    return True
+                except:
+                    return False
+        
         with engine.connect() as conn:
             # Add upi_id if missing
-            try:
-                conn.execute(text("""
-                    ALTER TABLE doctors ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100)
-                """))
-                conn.commit()
-                print("✅ Ensured upi_id column exists")
-            except Exception as e:
-                print(f"⚠️ upi_id column: {e}")
+            if not column_exists(conn, 'doctors', 'upi_id'):
+                try:
+                    conn.execute(text("ALTER TABLE doctors ADD COLUMN upi_id VARCHAR(100)"))
+                    conn.commit()
+                    print("✅ Added upi_id column")
+                except Exception as e:
+                    print(f"⚠️ upi_id column error: {e}")
+            else:
+                print("✅ upi_id column exists")
             
             # Add status if missing
-            try:
-                conn.execute(text("""
-                    ALTER TABLE doctors ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'
-                """))
-                conn.commit()
-                print("✅ Ensured status column exists")
-            except Exception as e:
-                print(f"⚠️ status column: {e}")
+            if not column_exists(conn, 'doctors', 'status'):
+                try:
+                    conn.execute(text("ALTER TABLE doctors ADD COLUMN status VARCHAR(20) DEFAULT 'active'"))
+                    conn.commit()
+                    print("✅ Added status column")
+                except Exception as e:
+                    print(f"⚠️ status column error: {e}")
+            else:
+                print("✅ status column exists")
             
             # Add consultation_fee if missing
-            try:
-                conn.execute(text("""
-                    ALTER TABLE doctors ADD COLUMN IF NOT EXISTS consultation_fee INTEGER DEFAULT 500
-                """))
-                conn.commit()
-                print("✅ Ensured consultation_fee column exists")
-            except Exception as e:
-                print(f"⚠️ consultation_fee column: {e}")
+            if not column_exists(conn, 'doctors', 'consultation_fee'):
+                try:
+                    conn.execute(text("ALTER TABLE doctors ADD COLUMN consultation_fee INTEGER DEFAULT 500"))
+                    conn.commit()
+                    print("✅ Added consultation_fee column")
+                except Exception as e:
+                    print(f"⚠️ consultation_fee column error: {e}")
+            else:
+                print("✅ consultation_fee column exists")
+            
+            # Add city if missing
+            if not column_exists(conn, 'doctors', 'city'):
+                try:
+                    conn.execute(text("ALTER TABLE doctors ADD COLUMN city VARCHAR(100)"))
+                    conn.commit()
+                    print("✅ Added city column")
+                except Exception as e:
+                    print(f"⚠️ city column error: {e}")
+            else:
+                print("✅ city column exists")
+            
+            # Add is_searchable if missing
+            if not column_exists(conn, 'doctors', 'is_searchable'):
+                try:
+                    conn.execute(text("ALTER TABLE doctors ADD COLUMN is_searchable BOOLEAN DEFAULT FALSE"))
+                    conn.commit()
+                    print("✅ Added is_searchable column")
+                except Exception as e:
+                    print(f"⚠️ is_searchable column error: {e}")
+            else:
+                print("✅ is_searchable column exists")
                 
         print("✅ Doctor columns verified\n")
     except Exception as e:
-        print(f"⚠️ Could not verify doctor columns: {e}\n")
+        import traceback
+        print(f"⚠️ Could not verify doctor columns: {e}")
+        print(f"Traceback: {traceback.format_exc()}\n")
     # ===== END COLUMN CHECK =====
     
     # ===== AUTO-RUN ALEMBIC MIGRATIONS =====
@@ -233,30 +281,15 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle HTTP exceptions (401, 403, 404, etc.)"""
-    logger.info(f"HTTP {exc.status_code}: {request.url.path} - {exc.detail}")
-    
-    if exc.status_code == 401:
-        # Check if request expects HTML (browser)
-        accept = request.headers.get("accept", "")
-        if "text/html" in accept:
-            # Redirect to login for browsers
-            from fastapi.responses import RedirectResponse
-            return RedirectResponse(url="/admin/login", status_code=302)
-    
-    # For API requests or other status codes, return JSON response
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail}
-    )
 
-# Mount static files for logo and assets
-from pathlib import Path
-static_dir = Path(__file__).parent / "static"
-if static_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+@app.get("/startup")
+async def startup_check():
+    """Lightweight startup check for Railway - returns immediately"""
+    return {
+        "status": "starting",
+        "message": "Application is responding",
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 
 @app.get("/")
@@ -307,6 +340,66 @@ async def health_check():
         health_status["status"] = "degraded"
     
     return health_status
+
+
+# GLOBAL EXCEPTION HANDLERS
+from fastapi.exceptions import HTTPException as StarletteHTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPExceptionBase
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch ALL unhandled exceptions and log them"""
+    error_trace = traceback.format_exc()
+    
+    # Force immediate log output
+    logger.error("=" * 80)
+    logger.error("🔥 UNHANDLED EXCEPTION")
+    logger.error("=" * 80)
+    logger.error(f"Path: {request.url.path}")
+    logger.error(f"Method: {request.method}")
+    logger.error(f"Error Type: {type(exc).__name__}")
+    logger.error(f"Error: {str(exc)}")
+    logger.error("\nFull Traceback:")
+    logger.error(error_trace)
+    logger.error("=" * 80)
+    sys.stdout.flush()
+    
+    # Return detailed error to browser
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "type": type(exc).__name__,
+            "detail": str(exc),
+            "path": request.url.path,
+            "traceback": error_trace.split("\n")
+        }
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Handle HTTP exceptions (401, 403, 404, etc.)"""
+    logger.info(f"HTTP {exc.status_code}: {request.url.path} - {exc.detail}")
+    
+    if exc.status_code == 401:
+        # Check if request expects HTML (browser)
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            # Redirect to login for browsers
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url="/admin/login", status_code=302)
+    
+    # For API requests or other status codes, return JSON response
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
+# Mount static files for logo and assets
+from pathlib import Path
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 @app.post("/init-db")
