@@ -45,7 +45,7 @@ async def update_profile(
 ):
     """Update doctor profile."""
     doctor.full_name = name.strip()
-    doctor.specialty = specialization.strip()
+    doctor.specialization = specialization.strip()
     db.commit()
     
     return RedirectResponse(url="/doctor/settings", status_code=302)

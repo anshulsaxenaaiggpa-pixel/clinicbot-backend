@@ -1,8 +1,8 @@
 #!/bin/bash
 # Railway startup script - runs migrations then starts the app
 
-# echo "==> Running database migrations..."
-# alembic upgrade head
+echo "==> Running database migrations..."
+alembic upgrade head
 
 # echo "==> Seeding test data..."
 # python seed_test_data.py
