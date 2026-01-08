@@ -70,3 +70,23 @@ async def update_password(
     db.commit()
     
     return RedirectResponse(url="/doctor/settings?success=password_updated", status_code=302)
+
+
+@router.post("/settings/consultation-fee")
+async def update_consultation_fee(
+    request: Request,
+    consultation_fee: int = Form(...),
+    doctor: Doctor = Depends(require_doctor),
+    csrf_valid: bool = Depends(validate_csrf),
+    db: Session = Depends(get_db)
+):
+    """Update consultation fee."""
+    # Validate fee is positive
+    if consultation_fee <= 0:
+        return RedirectResponse(url="/doctor/settings?error=invalid_fee", status_code=302)
+    
+    # Update fee
+    doctor.consultation_fee = consultation_fee
+    db.commit()
+    
+    return RedirectResponse(url="/doctor/settings?success=fee_updated", status_code=302)

@@ -29,7 +29,7 @@ async def messages_page(
     try:
         # Get recent conversations (limited view)
         conversations = db.query(ConversationState).order_by(
-            ConversationState.updated_at.desc()
+            ConversationState.last_message_at.desc()
         ).limit(20).all()
         
         return templates.TemplateResponse(

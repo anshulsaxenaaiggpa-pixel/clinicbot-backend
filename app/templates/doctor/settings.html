@@ -76,9 +76,42 @@
         </div>
     </div>
 
-    <!-- Subscription Info -->
+    <!-- Consultation Fee & Subscription Info -->
     <div class="row">
-        <div class="col-md-12">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Consultation Fee</h5>
+                </div>
+                <div class="card-body">
+                    {% if request.query_params.get('error') == 'invalid_fee' %}
+                    <div class="alert alert-danger">Invalid fee amount. Please enter a positive value.</div>
+                    {% endif %}
+                    {% if request.query_params.get('success') == 'fee_updated' %}
+                    <div class="alert alert-success">Consultation fee updated successfully!</div>
+                    {% endif %}
+                    
+                    <form method="POST" action="/doctor/settings/consultation-fee">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-3">
+                            <label for="consultation_fee" class="form-label">Your Consultation Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="consultation_fee" 
+                                    name="consultation_fee" value="{{ doctor.consultation_fee }}" 
+                                    min="0" step="50" required>
+                            </div>
+                            <small class="text-muted">This fee will be shown to patients when they book appointments via WhatsApp</small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Update Fee</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Subscription Status</h5>
@@ -94,7 +127,7 @@
                         {% endif %}
                     </p>
                     <p><strong>Plan:</strong> ₹199/month</p>
-                    <p><strong>Consultation Fee:</strong> ₹{{ doctor.consultation_fee }}</p>
+                    <p class="text-muted"><small>Contact support for billing queries</small></p>
                 </div>
             </div>
         </div>
