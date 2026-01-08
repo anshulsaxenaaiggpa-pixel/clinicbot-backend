@@ -385,9 +385,14 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         # Check if request expects HTML (browser)
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
-            # Redirect to login for browsers
+            # Redirect to appropriate login based on request path
             from fastapi.responses import RedirectResponse
-            return RedirectResponse(url="/admin/login", status_code=302)
+            
+            # Check if this is a doctor route
+            if request.url.path.startswith("/doctor"):
+                return RedirectResponse(url="/doctor/login", status_code=302)
+            else:
+                return RedirectResponse(url="/admin/login", status_code=302)
     
     # For API requests or other status codes, return JSON response
     return JSONResponse(
