@@ -13,7 +13,9 @@ from app.models.patient import Patient  # noqa: F401
 from app.models.appointment import Appointment  # noqa: F401
 from app.models.admin_user import AdminUser  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
-from app.models.consent import ConsentLog  # noqa: F401
+from app.models.conversation_state import ConversationState, BookingState
+from app.models.consent_log import ConsentLog
+from app.models.doctor_availability import DoctorAvailability, DoctorLeave  # noqa: F401
 
 __all__ = [
     "Clinic",

@@ -41,6 +41,8 @@ class Doctor(Base):
     # Relationships
     clinic = relationship("Clinic", back_populates="doctors")
     appointments = relationship("Appointment", back_populates="doctor")
+    availability_slots = relationship("DoctorAvailability", back_populates="doctor", cascade="all, delete-orphan")
+    leaves = relationship("DoctorLeave", back_populates="doctor", cascade="all, delete-orphan")
     
     def set_password(self, password: str):
         """Hash and set password."""

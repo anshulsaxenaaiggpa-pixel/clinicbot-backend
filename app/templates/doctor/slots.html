@@ -1,41 +1,209 @@
 {% extends "doctor/base.html" %}
 
-{% block title %}Slots{% endblock %}
+{% block title %}Manage Slots{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <h2 class="mb-4"><i class="bi bi-calendar3"></i> Appointment Slots</h2>
+    <h2 class="mb-4"><i class="bi bi-calendar-week"></i> Manage Availability</h2>
+
+    <!-- Success/Error Messages -->
+    {% if request.query_params.get('success') %}
+    <div class="alert alert-success alert-dismissible fade show">
+        {% if request.query_params.get('success') == 'added' %}Availability slot added successfully!
+        {% elif request.query_params.get('success') == 'deleted' %}Slot deleted successfully!
+        {% elif request.query_params.get('success') == 'leave_added' %}Leave added successfully!
+        {% elif request.query_params.get('success') == 'leave_deleted' %}Leave removed successfully!
+        {% endif %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get('error') %}
+    <div class="alert alert-danger alert-dismissible fade show">
+        {% if request.query_params.get('error') == 'invalid_time_range' %}Invalid time range. End time must be after
+        start time.
+        {% elif request.query_params.get('error') == 'past_date' %}Cannot add leave for past dates.
+        {% else %}An error occurred. Please try again.
+        {% endif %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
 
     <div class="row">
-        {% for slot in slots_data %}
-        <div class="col-md-12 mb-3">
+        <!-- Weekly Schedule -->
+        <div class="col-md-7 mb-4">
             <div class="card">
-                <div class="card-header bg-light">
-                    <div class="d-flex justify-content-between">
-                        <strong>{{ slot.day_name }}, {{ slot.date.strftime('%d %b %Y') }}</strong>
-                        <span class="badge bg-primary">{{ slot.booked_count }} / {{ slot.total_count }} slots</span>
-                    </div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Weekly Schedule</h5>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSlotModal">
+                        <i class="bi bi-plus-circle"></i> Add Time Slot
+                    </button>
                 </div>
                 <div class="card-body">
-                    {% if slot.appointments %}
-                    <div class="d-flex flex-wrap gap-2">
-                        {% for appt in slot.appointments %}
-                        <div
-                            class="badge {% if appt.status == 'booked' %}bg-success{% elif appt.status == 'completed' %}bg-secondary{% else %}bg-danger{% endif %} p-2">
-                            {{ appt.start_utc_ts.strftime('%I:%M %p') }}
-                            {% if appt.patient_name %}
-                            - {{ appt.patient_name }}
-                            {% endif %}
+                    {% if availability_by_day %}
+                    {% for day_name, slots in availability_by_day.items() %}
+                    <div class="mb-3">
+                        <h6 class="text-primary">{{ day_name }}</h6>
+                        {% for slot in slots %}
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span>
+                                <i class="bi bi-clock"></i>
+                                {{ slot.start_time.strftime('%I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }}
+                            </span>
+                            <form method="POST" action="/doctor/slots/availability/{{ slot.id }}/delete"
+                                style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Delete this time slot?')">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
                         </div>
                         {% endfor %}
                     </div>
+                    {% endfor %}
                     {% else %}
-                    <p class="text-muted mb-0">No appointments scheduled</p>
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+                        <p class="mt-2">No availability slots set</p>
+                        <p class="small">Click "Add Time Slot" to set your working hours</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
         </div>
-        {% endfor %}
+
+        <!-- Holidays/Leaves -->
+        <div class="col-md-5 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Upcoming Leaves</h5>
+                    <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#addLeaveModal">
+                        <i class="bi bi-plus-circle"></i> Add Leave
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if leaves %}
+                    {% for leave in leaves %}
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <strong>{{ leave.leave_date.strftime('%b %d, %Y') }}</strong>
+                            {% if leave.reason %}
+                            <br><small class="text-muted">{{ leave.reason }}</small>
+                            {% endif %}
+                        </div>
+                        <form method="POST" action="/doctor/slots/leave/{{ leave.id }}/delete" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Remove this leave?')">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-sun" style="font-size: 3rem;"></i>
+                        <p class="mt-2">No upcoming leaves</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Add Slot Modal -->
+<div class="modal fade" id="addSlotModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/doctor/slots/availability/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Availability Slot</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="day_of_week" class="form-label">Day of Week</label>
+                        <select class="form-select" id="day_of_week" name="day_of_week" required>
+                            <option value="0">Monday</option>
+                            <option value="1">Tuesday</option>
+                            <option value="2">Wednesday</option>
+                            <option value="3">Thursday</option>
+                            <option value="4">Friday</option>
+                            <option value="5">Saturday</option>
+                            <option value="6">Sunday</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="start_time" class="form-label">Start Time</label>
+                        <input type="time" class="form-control" id="start_time" name="start_time" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="end_time" class="form-label">End Time</label>
+                        <input type="time" class="form-control" id="end_time" name="end_time" required>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <small><i class="bi bi-info-circle"></i> You can add multiple slots per day (e.g., morning and
+                            evening shifts)</small>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Slot</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Leave Modal -->
+<div class="modal fade" id="addLeaveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/doctor/slots/leave/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Leave/Holiday</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="leave_date" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="leave_date" name="leave_date"
+                            min="{{ today.isoformat() }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason (Optional)</label>
+                        <input type="text" class="form-control" id="reason" name="reason"
+                            placeholder="E.g., Public Holiday, Personal Leave">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Add Leave</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set default min date for leave picker
+    document.addEventListener('DOMContentLoaded', function () {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('leave_date').setAttribute('min', today);
+    });
+</script>
 {% endblock %}
