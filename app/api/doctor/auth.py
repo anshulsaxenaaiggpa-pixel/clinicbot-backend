@@ -81,7 +81,7 @@ async def login(
         client_ip = get_client_ip(request)
         user_agent = request.headers.get("user-agent", "unknown")
         session_token, csrf_token = session_manager.create_session(
-            admin_user_id=str(doctor.id),
+            user_id=str(doctor.id),
             ip_address=client_ip,
             user_agent=user_agent,
             user_type="doctor"  # Mark as doctor session
