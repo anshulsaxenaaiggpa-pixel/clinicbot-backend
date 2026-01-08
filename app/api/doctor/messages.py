@@ -28,9 +28,14 @@ async def messages_page(
     """Display recent WhatsApp conversations."""
     try:
         # Get recent conversations (limited view)
-        conversations = db.query(ConversationState).order_by(
-            ConversationState.last_message_at.desc()
-        ).limit(20).all()
+        try:
+            conversations = db.query(ConversationState).order_by(
+                ConversationState.last_message_at.desc()
+            ).limit(20).all()
+        except Exception as db_error:
+            # Table might not exist yet
+            print(f"⚠️ Could not query conversations: {db_error}")
+            conversations = []
         
         return templates.TemplateResponse(
             "doctor/messages.html",

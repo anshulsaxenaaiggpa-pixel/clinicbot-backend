@@ -66,7 +66,8 @@ async def slot_management(
                 "csrf_token": request.state.csrf_token,
                 "availability_by_day": availability_by_day,
                 "leaves": leaves,
-                "days_map": days_map
+                "days_map": days_map,
+                "today": today  # For date picker min value
             }
         )
     
