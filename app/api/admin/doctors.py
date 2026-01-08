@@ -74,8 +74,8 @@ async def list_doctors(
         for doctor in doctors:
             html += f"""
                         <tr>
-                            <td>{doctor.full_name}</td>
-                            <td>{doctor.specialty or 'N/A'}</td>
+                            <td>{doctor.name}</td>
+                            <td>{doctor.specialization or 'N/A'}</td>
                             <td>{'✅ Active' if doctor.is_active else '❌ Inactive'}</td>
                         </tr>
             """
@@ -189,8 +189,8 @@ async def create_doctor(
     doctor = Doctor(
         id=str(uuid.uuid4()),
         clinic_id=str(clinic.id),
-        full_name=full_name.strip(),
-        specialty=specialty.strip(),
+        name=full_name.strip(),
+        specialization=specialty.strip(),
         upi_id=upi_id.strip(),
         status=status,
         consultation_fee=consultation_fee,
@@ -209,8 +209,8 @@ async def create_doctor(
         actor_id=str(admin_user.id),
         metadata={
             "doctor_id": str(doctor.id),
-            "name": doctor.full_name,
-            "specialization": doctor.specialty,
+            "name": doctor.name,
+            "specialization": doctor.specialization,
             "upi_id": doctor.upi_id,
             "status": doctor.status,
             "whatsapp_number": whatsapp_number,
@@ -301,13 +301,13 @@ async def update_doctor(
     
     # Track changes
     changes = {}
-    if doctor.full_name != full_name.strip():
-        changes["full_name"] = {"old": doctor.full_name, "new": full_name.strip()}
-        doctor.full_name = full_name.strip()
+    if doctor.name != full_name.strip():
+        changes["name"] = {"old": doctor.name, "new": full_name.strip()}
+        doctor.name = full_name.strip()
     
-    if doctor.specialty != specialty.strip():
-        changes["specialty"] = {"old": doctor.specialty, "new": specialty.strip()}
-        doctor.specialty = specialty.strip()
+    if doctor.specialization != specialty.strip():
+        changes["specialization"] = {"old": doctor.specialization, "new": specialty.strip()}
+        doctor.specialization = specialty.strip()
     
     if doctor.city != city.strip():
         changes["city"] = {"old": doctor.city, "new": city.strip()}
@@ -373,7 +373,7 @@ async def toggle_search_visibility(
         actor_id=str(admin_user.id),
         metadata={
             "doctor_id": str(doctor.id),
-            "doctor_name": doctor.full_name,
+            "doctor_name": doctor.name,
             "old_status": old_status,
             "new_status": new_status,
             "ip_address": client_ip
@@ -417,7 +417,7 @@ async def delete_doctor(
         actor_id=str(admin_user.id),
         metadata={
             "doctor_id": str(doctor.id),
-            "doctor_name": doctor.full_name,
+            "doctor_name": doctor.name,
             "ip_address": client_ip
         },
         db=db
