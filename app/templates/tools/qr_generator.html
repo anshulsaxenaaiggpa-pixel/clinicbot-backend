@@ -23,9 +23,9 @@
                             <select class="form-select" id="doctorSelect" required onchange="generateQR()">
                                 <option value="">-- Select Doctor --</option>
                                 {% for doctor in doctors %}
-                                <option value="{{ doctor.id }}" data-name="{{ doctor.full_name }}"
-                                    data-specialization="{{ doctor.specialty }}">
-                                    {{ doctor.full_name }} - {{ doctor.specialty or 'General' }}
+                                <option value="{{ doctor.id }}" data-name="{{ doctor.name }}"
+                                    data-specialization="{{ doctor.specialization }}">
+                                    {{ doctor.name }} - {{ doctor.specialization or 'General' }}
                                 </option>
                                 {% endfor %}
                             </select>

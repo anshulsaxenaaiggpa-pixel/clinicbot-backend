@@ -77,7 +77,7 @@ async def view_qr_code(
                 "csrf_token": getattr(request.state, 'csrf_token', ''),
                 "doctor": doctor,
                 "whatsapp_link": "https://wa.me/",  # Placeholder - need clinic WhatsApp
-                "share_message": f"Book appointment with Dr. {doctor.full_name}",
+                "share_message": f"Book appointment with Dr. {doctor.name}",
                 "qr_download_url": f"/admin/tools/qr/{doctor_id}/download"
             }
         )
@@ -107,7 +107,7 @@ async def download_qr_code(
     # Generate simple QR code with doctor info
     try:
         # Create a simple URL or message for QR code
-        qr_data = f"Doctor: {doctor.full_name}, Specialization: {doctor.specialty or 'General'}"
+        qr_data = f"Doctor: {doctor.name}, Specialization: {doctor.specialization or 'General'}"
         
         import qrcode
         from io import BytesIO
@@ -125,7 +125,7 @@ async def download_qr_code(
         raise HTTPException(status_code=500, detail=f"QR generation failed: {str(e)}")
     
     # Return as downloadable PNG
-    filename = f"qr_{doctor.full_name.replace(' ', '_').lower()}.png"
+    filename = f"qr_{doctor.name.replace(' ', '_').lower()}.png"
     
     return Response(
         content=qr_bytes,
