@@ -58,21 +58,30 @@ class SessionManager:
     
     def create_session(
         self,
-        admin_user_id: str,
-        ip_address: str,
-        user_agent: str
+        admin_user_id: str = None,
+        user_id: str = None,
+        ip_address: str = "",
+        user_agent: str = "",
+        user_type: str = "admin"
     ) -> tuple[str, str]:
         """
-        Create new session for authenticated admin.
+        Create new session for authenticated user (admin or doctor).
         
         Args:
-            admin_user_id: Admin user UUID
+            admin_user_id: Admin user UUID (deprecated, use user_id)
+            user_id: User UUID (admin or doctor)
             ip_address: Client IP address
             user_agent: Client user agent
+            user_type: Type of user ('admin' or 'doctor')
         
         Returns:
             tuple: (session_token, csrf_token)
         """
+        # Support both parameter names for backwards compatibility
+        actual_user_id = user_id or admin_user_id
+        if not actual_user_id:
+            raise ValueError("Either user_id or admin_user_id must be provided")
+        
         # Generate session ID
         session_id = secrets.token_urlsafe(32)
         
@@ -81,7 +90,8 @@ class SessionManager:
         
         # Store session data in Redis
         session_data = {
-            "user_id": admin_user_id,
+            "user_id": actual_user_id,
+            "user_type": user_type,
             "ip_address": ip_address,
             "user_agent": user_agent,
             "csrf_token": csrf_token,
