@@ -31,17 +31,25 @@ async def messages_page(
     """Display messages interface with send options."""
     try:
         # Get recent conversations (limited view)
+        conversations = []
         try:
             conversations = db.query(ConversationState).order_by(
                 ConversationState.last_message_at.desc()
             ).limit(20).all()
         except Exception as db_error:
-            # Table might not exist yet
+            # Table might not exist yet - rollback transaction
             print(f"⚠️ Could not query conversations: {db_error}")
+            db.rollback()  # Reset transaction state
             conversations = []
         
-        # Get all patients for messaging
-        patients = db.query(Patient).order_by(Patient.created_at.desc()).all()
+        # Get all patients for messaging (in fresh transaction state)
+        patients = []
+        try:
+            patients = db.query(Patient).order_by(Patient.created_at.desc()).all()
+        except Exception as patient_error:
+            print(f"⚠️ Could not query patients: {patient_error}")
+            db.rollback()
+            patients = []
         
         return templates.TemplateResponse(
             "doctor/messages.html",
@@ -58,6 +66,7 @@ async def messages_page(
     except Exception as e:
         import traceback
         print(f"❌ Messages error: {traceback.format_exc()}")
+        db.rollback()  # Rollback on any error
         return HTMLResponse(
             content=f"<h1>Error</h1><pre>{traceback.format_exc()}</pre>",
             status_code=500
