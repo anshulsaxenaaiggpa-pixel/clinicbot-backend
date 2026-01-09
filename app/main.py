@@ -499,9 +499,12 @@ except Exception as e:
     admin_loaded = False
     admin_import_error = str(e)
 
-# Doctor Dashboard Routes
+# Doctor Dashboard Routes - Core modules
 doctor_import_error = None
 doctor_loaded = False
+doctor_feedback = None
+doctor_analytics = None
+
 try:
     from app.api.doctor import (
         auth as doctor_auth,
@@ -512,18 +515,33 @@ try:
         patients as doctor_patients,
         settings as doctor_settings,
         messages as doctor_messages,
-        qr as doctor_qr,
-        feedback as doctor_feedback,
-        analytics as doctor_analytics
+        qr as doctor_qr
     )
     doctor_loaded = True
-    print("✅ Doctor dashboard routes imported successfully")
+    print("✅ Doctor dashboard core routes imported successfully")
 except Exception as e:
     print(f"❌ Doctor UI Import Failed: {e}")
     import traceback
     traceback.print_exc()
     doctor_loaded = False
     doctor_import_error = str(e)
+
+# Optional: Load feedback and analytics modules (don't fail if these don't load)
+if doctor_loaded:
+    try:
+        from app.api.doctor import feedback as doctor_feedback
+        print("✅ Doctor feedback module imported")
+    except Exception as e:
+        print(f"⚠️ Doctor feedback module not available: {e}")
+        doctor_feedback = None
+    
+    try:
+        from app.api.doctor import analytics as doctor_analytics
+        print("✅ Doctor analytics module imported")
+    except Exception as e:
+        print(f"⚠️ Doctor analytics module not available: {e}")
+        doctor_analytics = None
+
 
 
 # Admin UI routes (requires SESSION_SECRET_KEY and ADMIN_UI_ENABLED=True)
@@ -601,9 +619,21 @@ if doctor_loaded:
         app.include_router(doctor_settings.router, tags=["doctor-settings"])
         app.include_router(doctor_messages.router, tags=["doctor-messages"])
         app.include_router(doctor_qr.router, tags=["doctor-qr"])
-        app.include_router(doctor_feedback.router, tags=["doctor-feedback"])
-        app.include_router(doctor_analytics.router, tags=["doctor-analytics"])
-        print("✅ All doctor routes registered successfully!")
+        
+        # Optional modules
+        if doctor_feedback is not None:
+            app.include_router(doctor_feedback.router, tags=["doctor-feedback"])
+            print("  ✅ Feedback routes registered")
+        else:
+            print("  ⚠️ Feedback routes skipped (module not loaded)")
+            
+        if doctor_analytics is not None:
+            app.include_router(doctor_analytics.router, tags=["doctor-analytics"])
+            print("  ✅ Analytics routes registered")
+        else:
+            print("  ⚠️ Analytics routes skipped (module not loaded)")
+            
+        print("✅ All available doctor routes registered successfully!")
     except Exception as e:
         print(f"⚠️ Doctor route registration failed: {e}")
         import traceback
