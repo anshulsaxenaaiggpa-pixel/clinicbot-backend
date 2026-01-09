@@ -41,9 +41,7 @@ async def messages_page(
             conversations = []
         
         # Get all patients for messaging
-        patients = db.query(Patient).filter(
-            Patient.doctor_id == doctor.id
-        ).order_by(Patient.created_at.desc()).all()
+        patients = db.query(Patient).order_by(Patient.created_at.desc()).all()
         
         return templates.TemplateResponse(
             "doctor/messages.html",
@@ -77,10 +75,7 @@ async def send_individual_message(
     """Send individual WhatsApp message to a patient."""
     try:
         # Get patient
-        patient = db.query(Patient).filter(
-            Patient.id == patient_id,
-            Patient.doctor_id == doctor.id
-        ).first()
+        patient = db.query(Patient).filter(Patient.id == patient_id).first()
         
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
@@ -120,9 +115,7 @@ async def send_bulk_message(
     """Send bulk WhatsApp message to all patients (additional charges apply)."""
     try:
         # Get all patients
-        patients = db.query(Patient).filter(
-            Patient.doctor_id == doctor.id
-        ).all()
+        patients = db.query(Patient).all()
         
         if not patients:
             raise HTTPException(status_code=404, detail="No patients found")
