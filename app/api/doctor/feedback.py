@@ -11,7 +11,7 @@ from app.models.doctor import Doctor
 from app.models.appointment import Appointment
 from app.api.doctor.dependencies import get_current_doctor
 
-router = APIRouter()
+router = APIRouter(prefix="/doctor", tags=["doctor-feedback"])
 templates = Jinja2Templates(directory="app/templates")
 
 
