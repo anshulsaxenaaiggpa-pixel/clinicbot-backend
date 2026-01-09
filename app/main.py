@@ -512,7 +512,9 @@ try:
         patients as doctor_patients,
         settings as doctor_settings,
         messages as doctor_messages,
-        qr as doctor_qr
+        qr as doctor_qr,
+        feedback as doctor_feedback,
+        analytics as doctor_analytics
     )
     doctor_loaded = True
     print("✅ Doctor dashboard routes imported successfully")
@@ -599,6 +601,8 @@ if doctor_loaded:
         app.include_router(doctor_settings.router, tags=["doctor-settings"])
         app.include_router(doctor_messages.router, tags=["doctor-messages"])
         app.include_router(doctor_qr.router, tags=["doctor-qr"])
+        app.include_router(doctor_feedback.router, tags=["doctor-feedback"])
+        app.include_router(doctor_analytics.router, tags=["doctor-analytics"])
         print("✅ All doctor routes registered successfully!")
     except Exception as e:
         print(f"⚠️ Doctor route registration failed: {e}")
