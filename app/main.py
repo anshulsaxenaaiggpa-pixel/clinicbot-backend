@@ -671,6 +671,14 @@ try:
 except Exception as e:
     print(f"⚠️ Public landing pages not available: {e}")
 
+# Public directory (city/specialty)
+try:
+    from app.api.public import directory as public_directory
+    app.include_router(public_directory.router)
+    print("✅ Public directory registered")
+except Exception as e:
+    print(f"⚠️ Public directory not available: {e}")
+
 
 # Debug: List all registered routes
 print("\n" + "=" * 60)
