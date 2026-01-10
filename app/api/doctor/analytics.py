@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from app.db.database import get_db
 from app.models.doctor import Doctor
 from app.models.appointment import Appointment
-from app.api.doctor.dependencies import get_current_doctor
+from app.api.doctor.dependencies import require_doctor
 
 router = APIRouter(prefix="/doctor", tags=["doctor-analytics"])
 templates = Jinja2Templates(directory="app/templates")
@@ -18,7 +18,7 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/analytics", response_class=HTMLResponse)
 async def analytics_page(
     request: Request,
-    doctor: Doctor = Depends(get_current_doctor),
+    doctor: Doctor = Depends(require_doctor),
     db: Session = Depends(get_db)
 ):
     """
