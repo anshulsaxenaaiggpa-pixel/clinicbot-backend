@@ -16,6 +16,8 @@ from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.conversation_state import ConversationState, BookingState  # noqa: F401
 from app.models.consent import ConsentLog  # noqa: F401
 from app.models.doctor_availability import DoctorAvailability, DoctorLeave  # noqa: F401
+from app.models.country import Country  # noqa: F401
+from app.models.subscription_plan import SubscriptionPlan  # noqa: F401
 
 __all__ = [
     "Clinic",
@@ -28,4 +30,6 @@ __all__ = [
     "AdminUser",
     "AuditLog",
     "ConsentLog",
+    "Country",
+    "SubscriptionPlan",
 ]

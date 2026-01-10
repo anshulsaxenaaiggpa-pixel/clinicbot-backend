@@ -20,8 +20,10 @@ async def billing_page(
     doctor: Doctor = Depends(require_doctor),
     db: Session = Depends(get_db)
 ):
-    """Doctor billing dashboard"""
+    """Doctor billing dashboard with subscriptions"""
     from app.models.appointment import Appointment
+    from app.models.subscription_plan import SubscriptionPlan
+    from app.core.currencies import format_price
     
     # Get recent paid appointments
     recent_appointments = db.query(Appointment)\
@@ -30,10 +32,44 @@ async def billing_page(
         .limit(10)\
         .all()
     
+    # Get current subscription plan
+    current_plan = None
+    if doctor.subscription_plan_id:
+        current_plan = db.query(SubscriptionPlan).filter(
+            SubscriptionPlan.id == doctor.subscription_plan_id
+        ).first()
+    
+    # Get all available plans for upgrade
+    all_plans = db.query(SubscriptionPlan).filter(
+        SubscriptionPlan.is_active == True
+    ).order_by(SubscriptionPlan.monthly_price_inr).all()
+    
+    # Calculate WhatsApp usage percentage
+    whatsapp_usage_pct = 0
+    if doctor.whatsapp_limit and doctor.whatsapp_limit > 0:
+        whatsapp_usage_pct = min(100, int((doctor.whatsapp_used / doctor.whatsapp_limit) * 100))
+    
+    # Format subscription price
+    subscription_price_formatted = ""
+    if current_plan:
+        if doctor.currency_code == "INR":
+            subscription_price_formatted = format_price(current_plan.monthly_price_inr, "INR")
+        else:
+            subscription_price_formatted = format_price(current_plan.monthly_price_usd, "USD")
+    
     return templates.TemplateResponse("doctor/billing.html", {
         "request": request,
         "doctor": doctor,
-        "recent_appointments": recent_appointments
+        "recent_appointments": recent_appointments,
+        "current_plan": current_plan,
+        "all_plans": all_plans,
+        "whatsapp_used": doctor.whatsapp_used or 0,
+        "whatsapp_limit": doctor.whatsapp_limit or 0,
+        "whatsapp_usage_pct": whatsapp_usage_pct,
+        "subscription_price": subscription_price_formatted,
+        "currency_code": doctor.currency_code or "INR",
+        "stripe_account_connected": doctor.stripe_account_id is not None,
+        "subscription_status": doctor.subscription_status or "trial"
     })
 
 
