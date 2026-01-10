@@ -584,6 +584,22 @@ if settings.ADMIN_UI_ENABLED:
             except Exception as e:
                 print(f"  ⚠️ admin_approve_doctor not available: {e}")
             
+            # Stripe payments
+            try:
+                from app.api.payments import stripe as stripe_payments
+                app.include_router(stripe_payments.router)
+                print("  ✅ stripe_payments registered")
+            except Exception as e:
+                print(f"  ⚠️ stripe_payments not available: {e}")
+            
+            # Doctor billing
+            try:
+                from app.api.doctor import billing as doctor_billing
+                app.include_router(doctor_billing.router)
+                print("  ✅ doctor_billing registered")
+            except Exception as e:
+                print(f"  ⚠️ doctor_billing not available: {e}")
+            
             print("✅ All admin routers registered successfully!")
         except Exception as router_error: # Fallback for Router Registration Errors
             print(f"⚠️ Admin UI router registration failed: {router_error} - activating fallback debugger")
