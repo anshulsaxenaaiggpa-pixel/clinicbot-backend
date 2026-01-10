@@ -575,6 +575,15 @@ if settings.ADMIN_UI_ENABLED:
             
             app.include_router(admin_seed_doctor.router, tags=["admin-seed"])  # NEW
             print("  ✅ admin_seed_doctor registered")
+            
+            # Admin doctor approval routes
+            try:
+                from app.api.admin import approve_doctor as admin_approve
+                app.include_router(admin_approve.router)
+                print("  ✅ admin_approve_doctor registered")
+            except Exception as e:
+                print(f"  ⚠️ admin_approve_doctor not available: {e}")
+            
             print("✅ All admin routers registered successfully!")
         except Exception as router_error: # Fallback for Router Registration Errors
             print(f"⚠️ Admin UI router registration failed: {router_error} - activating fallback debugger")
@@ -653,6 +662,15 @@ app.include_router(patients.router, prefix="/api/v1/patients", tags=["patients"]
 app.include_router(appointments.router, prefix="/api/v1/appointments", tags=["appointments"])
 app.include_router(slots.router, prefix="/api/v1/slots", tags=["slots"])
 app.include_router(summary.router, prefix="/api/v1/summary", tags=["summary"])
+
+# Public landing pages
+try:
+    from app.api.public import landing as public_landing
+    app.include_router(public_landing.router)
+    print("✅ Public landing pages registered")
+except Exception as e:
+    print(f"⚠️ Public landing pages not available: {e}")
+
 
 # Debug: List all registered routes
 print("\n" + "=" * 60)
