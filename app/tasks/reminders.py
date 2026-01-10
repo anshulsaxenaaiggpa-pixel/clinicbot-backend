@@ -25,15 +25,47 @@ def send_24h_reminder(appointment_id: str):
             logger.warning(f"Appointment {appointment_id} not found or not confirmed")
             return
         
-        # TODO: Send WhatsApp message via provider
-        # For now, just log and mark as sent
-        logger.info(f"Sending 24h reminder for appointment {appointment_id}")
+        # Get doctor and patient info
+        from app.models.doctor import Doctor
+        doctor = db.query(Doctor).filter(Doctor.id == appointment.doctor_id).first()
         
-        appointment.reminder_24h_sent = datetime.utcnow()
-        db.commit()
+        if not doctor:
+            logger.error(f"Doctor not found for appointment {appointment_id}")
+            return
+        
+        # Format reminder message
+        message = (
+            f"🔔 *Appointment Reminder*\n\n"
+            f"You have an appointment with *Dr. {doctor.name}* tomorrow.\n\n"
+            f"📅 Date: {appointment.date.strftime('%d %b %Y')}\n"
+            f"⏰ Time: {appointment.time.strftime('%I:%M %p')}\n"
+            f"💰 Fee: ₹{doctor.consultation_fee or 500}\n\n"
+            f"Reply CONFIRM to confirm or CANCEL to cancel.\n\n"
+            f"See you soon! 😊"
+        )
+        
+        # Send WhatsApp message
+        from app.services.whatsapp_sender import WhatsAppSender
+        import asyncio
+        
+        sender = WhatsAppSender()
+        success = asyncio.run(sender.send_message(
+            to=appointment.patient_phone,
+            message=message,
+            provider="gupshup"  # Use Gupshup for India
+        ))
+        
+        if success:
+            appointment.reminder_24h_sent = datetime.utcnow()
+            db.commit()
+            logger.info(f"✅ Sent 24h reminder for appointment {appointment_id}")
+        else:
+            logger.error(f"❌ Failed to send 24h reminder for {appointment_id}")
         
     except Exception as e:
         logger.error(f"Error sending 24h reminder: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         db.rollback()
     finally:
         db.close()
@@ -49,14 +81,45 @@ def send_2h_reminder(appointment_id: str):
         if not appointment or appointment.status != 'confirmed':
             return
         
-        # TODO: Send WhatsApp message
-        logger.info(f"Sending 2h reminder for appointment {appointment_id}")
+        # Get doctor info
+        from app.models.doctor import Doctor
+        doctor = db.query(Doctor).filter(Doctor.id == appointment.doctor_id).first()
         
-        appointment.reminder_2h_sent = datetime.utcnow()
-        db.commit()
+        if not doctor:
+            logger.error(f"Doctor not found for appointment {appointment_id}")
+            return
+        
+        # Format 2h reminder
+        message = (
+            f"⏰ *Appointment in 2 Hours!*\n\n"
+            f"Dr. {doctor.name}\n"
+            f"⏰ {appointment.time.strftime('%I:%M %p')}\n\n"
+            f"On your way? Reply YES to confirm.\n"
+            f"Running late? Let us know! 🚗"
+        )
+        
+        # Send message
+        from app.services.whatsapp_sender import WhatsAppSender
+        import asyncio
+        
+        sender = WhatsAppSender()
+        success = asyncio.run(sender.send_message(
+            to=appointment.patient_phone,
+            message=message,
+            provider="gupshup"
+        ))
+        
+        if success:
+            appointment.reminder_2h_sent = datetime.utcnow()
+            db.commit()
+            logger.info(f"✅ Sent 2h reminder for appointment {appointment_id}")
+        else:
+            logger.error(f"❌ Failed to send 2h reminder for {appointment_id}")
         
     except Exception as e:
         logger.error(f"Error sending 2h reminder: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         db.rollback()
     finally:
         db.close()
