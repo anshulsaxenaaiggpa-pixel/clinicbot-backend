@@ -41,9 +41,7 @@ requests==2.31.0
 openai==1.3.7
 anthropic==0.7.7
 
-# Payment
-razorpay==1.4.1
-stripe>=8.0.0
+# Payment (moved to Authentication section above)
 
 # Utilities
 pydantic==2.5.0
