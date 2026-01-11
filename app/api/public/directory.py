@@ -36,24 +36,54 @@ async def city_directory(
     request: Request,
     db: Session = Depends(get_db),
     specialty: Optional[str] = None,
+    min_fee: Optional[int] = None,
+    max_fee: Optional[int] = None,
+    min_rating: Optional[float] = None,
+    available_today: Optional[bool] = False,
     page: int = 1
 ):
     """
-    City directory - all doctors in a city
-    Optional specialty filter
+    City directory - all doctors in a city with advanced filters
+    - specialty: Filter by specialization
+    - min_fee/max_fee: Consultation fee range
+    - min_rating: Minimum rating (e.g. 4.0 for 4+ stars)
+    - available_today: Has slots available today
     """
     query = db.query(Doctor).filter(
         Doctor.city == city.title(),
-        Doctor.is_active == True
+        Doctor.is_active == True,
+        Doctor.is_searchable == True
     )
     
     if specialty:
-        query = query.filter(Doctor.specialty_primary == specialty.title())
+        query = query.filter(Doctor.specialization == specialty.title())
+    
+    # Fee range filter
+    if min_fee is not None:
+        query = query.filter(Doctor.consultation_fee >= min_fee)
+    if max_fee is not None:
+        query = query.filter(Doctor.consultation_fee <= max_fee)
+    
+    # Rating filter
+    if min_rating is not None:
+        query = query.filter(Doctor.rating_average >= min_rating)
+    
+    # Available today filter (simplified - checks if doctor has availability slots)
+    if available_today:
+        from app.models.doctor_availability import DoctorAvailability
+        from datetime import datetime, date
+        
+        today_day = datetime.today().strftime('%A')  # Monday, Tuesday, etc
+        
+        query = query.join(DoctorAvailability).filter(
+            DoctorAvailability.day_of_week == today_day,
+            DoctorAvailability.is_active == True
+        )
     
     # Get unique specialties in this city for filter dropdown
-    specialties = db.query(Doctor.specialty_primary, func.count(Doctor.id).label('count'))\
-        .filter(Doctor.city == city.title(), Doctor.is_active == True, Doctor.specialty_primary.isnot(None))\
-        .group_by(Doctor.specialty_primary)\
+    specialties = db.query(Doctor.specialization, func.count(Doctor.id).label('count'))\
+        .filter(Doctor.city == city.title(), Doctor.is_active == True, Doctor.specialization.isnot(None))\
+        .group_by(Doctor.specialization)\
         .order_by(func.count(Doctor.id).desc())\
         .all()
     
@@ -61,7 +91,7 @@ async def city_directory(
     per_page = 20
     offset = (page - 1) * per_page
     
-    doctors = query.order_by(Doctor.google_rating.desc().nullslast())\
+    doctors = query.order_by(Doctor.rating_average.desc().nullslast())\
         .limit(per_page).offset(offset).all()
     
     total = query.count()
@@ -72,10 +102,14 @@ async def city_directory(
         "city": city.title(),
         "specialty": specialty.title() if specialty else None,
         "doctors": doctors,
-        "specialties":  specialties,
+        "specialties": specialties,
         "page": page,
         "total_pages": total_pages,
-        "total": total
+        "total": total,
+        "min_fee": min_fee,
+        "max_fee": max_fee,
+        "min_rating": min_rating,
+        "available_today": available_today
     })
 
 

@@ -711,6 +711,22 @@ try:
 except Exception as e:
     print(f"⚠️ Public directory not available: {e}")
 
+# Reviews API
+try:
+    from app.api import reviews
+    app.include_router(reviews.router)
+    print("✅ Reviews API registered")
+except Exception as e:
+    print(f"⚠️ Reviews API not available: {e}")
+
+# Blog system
+try:
+    from app.api import blog
+    app.include_router(blog.router)
+    print("✅ Blog system registered")
+except Exception as e:
+    print(f"⚠️ Blog system not available: {e}")
+
 
 # Debug: List all registered routes
 print("\n" + "=" * 60)
