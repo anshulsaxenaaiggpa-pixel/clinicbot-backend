@@ -592,6 +592,14 @@ if settings.ADMIN_UI_ENABLED:
             except Exception as e:
                 print(f"  ⚠️ stripe_payments not available: {e}")
             
+            # Razorpay payments (India)
+            try:
+                from app.api.payments import razorpay as razorpay_payments
+                app.include_router(razorpay_payments.router)
+                print("  ✅ razorpay_payments registered")
+            except Exception as e:
+                print(f"  ⚠️ razorpay_payments not available: {e}")
+            
             # Subscriptions
             try:
                 from app.api import subscriptions
