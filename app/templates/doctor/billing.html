@@ -91,6 +91,51 @@
             </div>
         </div>
 
+        <!-- Subscription Plans (Upgrade) -->
+        {% if current_plan %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="fw-bold mb-3">📈 Upgrade Your Plan</h4>
+            </div>
+
+            {% for plan in all_plans %}
+            {% if plan.tier != current_plan.tier %}
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">{{ plan.name }}</h5>
+                        <h2 class="fw-bold">
+                            {% if currency_code == 'INR' %}
+                            ₹{{ "{:,}".format(plan.monthly_price_inr) }}<small class="text-muted">/mo</small>
+                            {% else %}
+                            ${{ plan.monthly_price_usd }}<small class="text-muted">/mo</small>
+                            {% endif %}
+                        </h2>
+                        <ul class="list-unstyled mt-3 mb-4">
+                            <li class="mb-2">✅ Web booking</li>
+                            {% if plan.whatsapp_quota > 0 %}
+                            <li class="mb-2">✅ {{ plan.whatsapp_quota }} WhatsApp msgs/mo</li>
+                            {% else %}
+                            <li class="mb-2">❌ No WhatsApp reminders</li>
+                            {% endif %}
+                            {% if plan.features.advanced_analytics %}
+                            <li class="mb-2">✅ Advanced analytics</li>
+                            {% endif %}
+                            {% if plan.features.priority_support %}
+                            <li class="mb-2">✅ Priority support</li>
+                            {% endif %}
+                        </ul>
+                        <button onclick="upgradeSubscription('{{ plan.tier }}')" class="btn btn-primary w-100">
+                            Upgrade to {{ plan.name }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <!-- Recent Transactions -->
         <div class="row">
             <div class="col-12">
@@ -164,6 +209,25 @@
                 }
             } catch (error) {
                 alert('Error opening dashboard: ' + error.message);
+            }
+        }
+
+        async function upgradeSubscription(tier) {
+            try {
+                const response = await fetch('/api/subscriptions/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tier: tier })
+                });
+                const data = await response.json();
+
+                if (data.checkout_url) {
+                    window.location = data.checkout_url;
+                } else {
+                    alert('Error: ' + (data.detail || 'Failed to create checkout session'));
+                }
+            } catch (error) {
+                alert('Error upgrading subscription: ' + error.message);
             }
         }
     </script>

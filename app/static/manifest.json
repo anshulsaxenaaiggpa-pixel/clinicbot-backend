@@ -1,0 +1,55 @@
+{
+    "name": "CuraSlot",
+    "short_name": "CuraSlot",
+    "description": "Book verified doctors instantly in India, UAE, USA, UK, and Australia",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#7C3AED",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/static/images/curaslot-logo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/images/curaslot-logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "health",
+        "medical",
+        "productivity"
+    ],
+    "shortcuts": [
+        {
+            "name": "Find Doctor",
+            "short_name": "Search",
+            "description": "Search for doctors by specialty or city",
+            "url": "/search",
+            "icons": [
+                {
+                    "src": "/static/images/curaslot-logo.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "My Appointments",
+            "short_name": "Appointments",
+            "description": "View your upcoming appointments",
+            "url": "/doctor/dashboard",
+            "icons": [
+                {
+                    "src": "/static/images/curaslot-logo.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ]
+}

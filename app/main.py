@@ -592,6 +592,14 @@ if settings.ADMIN_UI_ENABLED:
             except Exception as e:
                 print(f"  ⚠️ stripe_payments not available: {e}")
             
+            # Subscriptions
+            try:
+                from app.api import subscriptions
+                app.include_router(subscriptions.router)
+                print("  ✅ subscriptions registered")
+            except Exception as e:
+                print(f"  ⚠️ subscriptions not available: {e}")
+            
             # Doctor billing
             try:
                 from app.api.doctor import billing as doctor_billing
