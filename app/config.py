@@ -61,8 +61,9 @@ class Settings(BaseSettings):
             raise ValueError("SESSION_SECRET_KEY must be at least 32 characters")
         
         # Ensure HTTPS in production
-        if self.ENVIRONMENT == "production" and not self.ADMIN_UI_HTTPS_ONLY:
-            raise ValueError("ADMIN_UI_HTTPS_ONLY must be True in production")
+        # DISABLED for Railway: Proxy terminates SSL, so app sees HTTP
+        # if self.ENVIRONMENT == "production" and not self.ADMIN_UI_HTTPS_ONLY:
+        #     raise ValueError("ADMIN_UI_HTTPS_ONLY must be True in production")
         
         # TEMPORARILY DISABLED - Allowing DEBUG in production for troubleshooting
         # Ensure DEBUG is off in production
